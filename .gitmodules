@@ -1,0 +1,3 @@
+[submodule "zython-lexer"]
+	path = extern/zython-lexer
+	url = git@github.com:LKolinko/zython-lexer.git
