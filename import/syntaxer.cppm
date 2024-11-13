@@ -107,6 +107,13 @@ export class SyntaxValidator {
       cur_indent_ += 4;
       Program();
       cur_indent_ -= 4;
+      if (lexes_.at(0).GetType() == Lex::kSeparator &&
+          lexes_.size() > 1 &&
+          lexes_.at(1).GetType() == Lex::kKeyworkd &&
+          lexes_.at(1).GetData() == "case" &&
+          SpacesAmount() == cur_indent_) {
+        SkipLexem(Lex::kSeparator);
+      }
     }
     cur_indent_ -= 4;
     SkipLexem(Lex::kEndLine);
@@ -126,7 +133,7 @@ export class SyntaxValidator {
     cur_indent_ += 4;
     Program();
     cur_indent_ -= 4;
-    if (lexes_.at(0).GetType() == Lex::kKeyworkd && lexes_.at(0).GetData() == "else") {
+    if (!lexes_.empty() && lexes_.at(0).GetType() == Lex::kKeyworkd && lexes_.at(0).GetData() == "else") {
       SkipLexem(Lex::kKeyworkd, "else");
       SkipLexem(Lex::kKeyworkd, ":");
       cur_indent_ += 4;
@@ -148,7 +155,6 @@ export class SyntaxValidator {
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     cur_indent_ += 4;
-    std::println("Caller");
     Program();
     cur_indent_ -= 4;
   }
