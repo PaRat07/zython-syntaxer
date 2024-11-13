@@ -1,0 +1,9 @@
+def main():
+    a = "sdjhjhs asdasd"
+    a = 100
+    a = 100.100
+    a = a.b
+    while (a++ == --c):
+        // pinus
+        if (cock == 12):
+            break

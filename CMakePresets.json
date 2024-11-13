@@ -25,7 +25,7 @@
         "CMAKE_C_COMPILER" : "/usr/bin/clang-20",
         "CMAKE_CXX_COMPILER" : "/usr/bin/clang++-20",
         "CMAKE_LINKER_TYPE" : "LLD",
-        "CMAKE_CXX_FLAGS" : "-std=c++2c -fexperimental-library -D_LIBCPP_ENABLE_EXPERIMENTAL -stdlib=libc++"
+        "CMAKE_CXX_FLAGS" : "-std=c++2c -fexperimental-library -D_LIBCPP_ENABLE_EXPERIMENTAL -stdlib=libc++ -Wall -Wpedantic -Wextra -Weverything -Wno-switch-enum -Wno-signed-enum-bitfield -Wno-deprecated-register -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-c++98-c++11-compat-pedantic -Wno-nested-anon-types -Wno-gnu-anonymous-struct -Wno-missing-prototypes -Wno-documentation -Wno-documentation-unknown-command -Wno-weak-vtables -Wno-unused-const-variable -Wno-format-nonliteral -Wno-global-constructors -Wno-exit-time-destructors -Wno-error=padded"
       }
     },
     {
@@ -36,7 +36,7 @@
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_FLAGS_DEBUG": "-O1 -fsanitize=address -fstack-protector-all"
+        "CMAKE_CXX_FLAGS_DEBUG": "-O1 -fstack-protector-all"
       }
     },
     {

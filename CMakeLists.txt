@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.29)
-project(ZLEXER)
+project(ZSYNTAXER)
+
+add_subdirectory(extern/lexer)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -16,6 +18,9 @@ target_sources(${PROJECT_NAME}
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC include/)
+
+
+target_link_libraries(${PROJECT_NAME} ZLEXER::ZLEXER)
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 

@@ -1,12 +1,9 @@
-import lexer;
+import syntaxer;
 #include <iostream>
 #include <vector>
 
 int main() {
-    Lexer lexer("../../../huy.txt");
-    std::vector<Lexem> result = lexer.Scan();
-
-    for (auto& u : result) {
-        u.Print();
-    }    
+    SyntaxValidator validator("huy.txt");
+  int x;
+  std::cout << x << std::endl;
 }
