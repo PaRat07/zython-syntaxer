@@ -1,9 +1,10 @@
 module;
 
-#include <fstream>
-#include <span>
 #include <cassert>
+#include <fstream>
+#include <iostream>
 #include <ranges>
+#include <span>
 
 export module syntaxer;
 
@@ -39,6 +40,10 @@ export class SyntaxValidator {
     }
     lexes_ = lexes_filtered;
     Program();
+    if (!lexes_.empty()) {
+      throw std::invalid_argument("Unexpected tabulation");
+    }
+    std::println("All ok");
   }
 
  private:
@@ -51,7 +56,9 @@ export class SyntaxValidator {
       if (SpacesAmount() != cur_indent_) {
         return;
       }
-      SkipLexem(Lex::kSeparator);
+      if (lexes_.at(0).GetType() == Lex::kSeparator) {
+        SkipLexem(Lex::kSeparator);
+      }
       if (lexes_.at(0).GetType() == Lex::kEndLine) {
         SkipLexem(Lex::kEndLine);
       } else if (lexes_.at(0).GetType() == Lex::kKeyworkd) {
@@ -67,22 +74,23 @@ export class SyntaxValidator {
           if (in_cycle_ == 0) {
             throw std::runtime_error("SyntaxError: break out of cycle");
           }
-          SkipLexem(Lex::kKeyworkd);
+          SkipLexem(Lex::kKeyworkd, "break");
           SkipLexem(Lex::kEndLine);
         } else if (lexes_.at(0).GetData() == "pass") {
-          SkipLexem(Lex::kKeyworkd);
+          SkipLexem(Lex::kKeyworkd, "pass");
           SkipLexem(Lex::kEndLine);
         } else if (lexes_.at(0).GetData() == "continue") {
           if (in_cycle_ == 0) {
             throw std::runtime_error("SyntaxError: break out of cycle");
           }
-          SkipLexem(Lex::kKeyworkd);
+          SkipLexem(Lex::kKeyworkd, "continue");
           SkipLexem(Lex::kEndLine);
         } else {
-          throw std::invalid_argument("Am i stupid?");
+          throw std::invalid_argument(std::format("Am i stupid?: {}", lexes_.at(0).GetData()));
         }
       } else {
         Expression();
+        SkipLexem(Lex::kEndLine);
       }
     }
   }
@@ -101,10 +109,11 @@ export class SyntaxValidator {
       cur_indent_ -= 4;
     }
     cur_indent_ -= 4;
+    SkipLexem(Lex::kEndLine);
   }
 
   void Expression() {
-    while (lexes_.at(0).GetType() != Lex::kKeyworkd) {
+    while (lexes_.at(0).GetType() != Lex::kKeyworkd && lexes_.at(0).GetType() != Lex::kEndLine) {
       SkipLexem(lexes_.at(0).GetType());
     }
   }
@@ -113,6 +122,7 @@ export class SyntaxValidator {
     SkipLexem(Lex::kKeyworkd, "if");
     Expression();
     SkipLexem(Lex::kKeyworkd, ":");
+    SkipLexem(Lex::kEndLine);
     cur_indent_ += 4;
     Program();
     cur_indent_ -= 4;
@@ -130,13 +140,15 @@ export class SyntaxValidator {
     SkipLexem(Lex::kId);
     SkipLexem(Lex::kOperator, "(");
     while (lexes_.at(0).GetType() != Lex::kOperator ||
-           lexes_.at(1).GetData() != ")") {
+           lexes_.at(0).GetData() != ")") {
       SkipParam();
       SkipLexem(Lex::kOperator, ",");
     }
     SkipLexem(Lex::kOperator, ")");
     SkipLexem(Lex::kKeyworkd, ":");
+    SkipLexem(Lex::kEndLine);
     cur_indent_ += 4;
+    std::println("Caller");
     Program();
     cur_indent_ -= 4;
   }
@@ -145,8 +157,11 @@ export class SyntaxValidator {
     SkipLexem(Lex::kKeyworkd, "while");
     Expression();
     SkipLexem(Lex::kKeyworkd, ":");
+    SkipLexem(Lex::kEndLine);
     cur_indent_ += 4;
+    ++in_cycle_;
     Program();
+    --in_cycle_;
     cur_indent_ -= 4;
   }
 
