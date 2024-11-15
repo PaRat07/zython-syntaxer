@@ -1,9 +1,10 @@
 def main():
-    a = "sdjhjhs asdasd"
+    a = 12+"sdjhjhs #asdasd"
     a = 100
-    a = 100.100
+    a = 100.100,1
     a = a.b
-    while (a++ == --c):
-        // pinus
+    while (+a+1,+++-+1== --c):
+        pinus
         if (cock == 12):
             break
++9(6789898.1223.565765643)
