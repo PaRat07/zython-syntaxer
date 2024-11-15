@@ -169,6 +169,7 @@ export class SyntaxValidator {
   void Expression() {
     int cur_brace_balance = 0;
     bool prev_operator = true;
+    bool prev_dot = false;
 
     static std::set bin_op = {
       "*"sv, "/"sv, "%"sv, "<"sv, ">"sv, "=="sv, "!="sv, "<="sv, ">="sv, "="sv, "**"sv, "//"sv, "."sv, ","sv, "or"sv, "and"sv
@@ -178,6 +179,9 @@ export class SyntaxValidator {
     };
 
     while (lexes_.at(0).GetType() != Lex::kKeyworkd && lexes_.at(0).GetType() != Lex::kEndLine) {
+      if (prev_dot && lexes_.at(0).GetType() != Lex::kId) {
+        throw std::invalid_argument(std::format("SyntaxError: expected identifier after operator dot at {}", lexes_.at(0).GetPosition()));
+      }
       if (lexes_.at(0).GetType() == Lex::kOperator) {
         if (lexes_.at(0).GetData() == "(") {
           prev_operator = true;
@@ -207,6 +211,7 @@ export class SyntaxValidator {
         }
         prev_operator = false;
       }
+      prev_dot = lexes_.at(0).GetData() == ".";
       SkipLexem(lexes_.at(0).GetType());
     }
     if (cur_brace_balance > 0) {
