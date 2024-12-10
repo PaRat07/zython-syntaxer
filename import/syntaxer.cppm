@@ -133,7 +133,7 @@ export class SyntaxValidator {
           SkipLexem(Lex::kKeyworkd, "continue");
           SkipLexem(Lex::kEndLine);
         } else {
-          throw std::invalid_argument(std::format("Am i stupid?: {}", lexes_.at(0).GetData()));
+          throw std::invalid_argument(std::format("SyntaxError: expected code, got {}", lexes_.at(0).GetData()));
         }
       } else {
         Expression();
@@ -146,24 +146,21 @@ export class SyntaxValidator {
     SkipLexem(Lex::kKeyworkd, "match");
     Expression();
     SkipLexem(Lex::kKeyworkd, ":");
+    SkipLexem(Lex::kEndLine);
     cur_indent_ += 4;
-    while (lexes_.at(0).GetType() == Lex::kKeyworkd && lexes_.at(0).GetData() == "case") {
+    while (SpacesAmount() == cur_indent_) {
+      SkipLexem(Lex::kSeparator);
+      if (lexes_.at(0).GetType() != Lex::kKeyworkd || lexes_.at(0).GetData() != "case") {
+        throw std::invalid_argument(std::format("Expected case at {}, got \"{}\"", lexes_[0].GetPosition(), lexes_.at(0).GetData()));
+      }
       SkipLexem(Lex::kKeyworkd, "case");
       Expression();
       SkipLexem(Lex::kKeyworkd, ":");
       cur_indent_ += 4;
       Program();
       cur_indent_ -= 4;
-      if (lexes_.at(0).GetType() == Lex::kSeparator &&
-          lexes_.size() > 1 &&
-          lexes_.at(1).GetType() == Lex::kKeyworkd &&
-          lexes_.at(1).GetData() == "case" &&
-          SpacesAmount() == cur_indent_) {
-        SkipLexem(Lex::kSeparator);
-      }
     }
     cur_indent_ -= 4;
-    SkipLexem(Lex::kEndLine);
   }
 
   void Expression() {

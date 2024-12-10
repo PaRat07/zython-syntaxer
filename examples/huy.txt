@@ -1,11 +1,12 @@
-1.1.1
 def main():
-    a = 12+"sdjhjhs #asdasd"
+    a = (12+"sdjhjhs #asdasd")
     a = 100
     a = 100.100,1
     a = a.b
-    while (+a+1,+++-+1== --c):
-        pinus
-        if (cock == 12):
+    match 52:
+        case a+z:
+            zov
+            svo
+    while (+a+1,f = c and (d or f)):
+        if (a == 12):
             break
-+9(6789898.1223.565765643)

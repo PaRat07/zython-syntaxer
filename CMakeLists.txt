@@ -3,7 +3,7 @@ project(ZSYNTAXER)
 
 add_subdirectory(extern/lexer)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 
 file(GLOB SOURCES
      "import/*.cppm"
