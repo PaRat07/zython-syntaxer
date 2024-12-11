@@ -1,12 +1,11 @@
 def main():
     a = (12+"sdjhjhs #asdasd")
     a = 100
-    a = 100.100,1
+    a = 100.100
     a = a.b
     match 52:
-        case a+z:
+        case:
             zov
-            svo
     while (+a+1,f = c and (d or f)):
         if (a == 12):
             break
