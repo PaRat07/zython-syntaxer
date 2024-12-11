@@ -13,6 +13,7 @@ export enum class variable_type {
   Float,
   String,
   Array,
+  Char
 };
 
 export class Tid {
@@ -23,10 +24,12 @@ export class Tid {
   struct Variable_Node {
     std::string name;
     variable_type type;
+    int array_dimensions = 0;
   };
 
   struct Function_Node {
     std::string name;
+    Variable_Node return_value;
     std::vector<Variable_Node> parameters;
   };
 
@@ -63,10 +66,12 @@ export class Tid {
   }
 
  private:
+
   struct Node {
     Node* parent;
     Bor<Variable_Node> data_variables;
     Bor<Function_Node> data_functions;
   };
+
   std::unique_ptr<Node> root;
 };
