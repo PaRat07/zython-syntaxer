@@ -12,6 +12,7 @@ export module syntaxer;
 
 import lexer;
 import lexem;
+import tid;
 
 #define OPTIMIZING_ASSERT(cond) \
   assert(cond);                 \
@@ -87,13 +88,25 @@ export class SyntaxValidator {
     if (!lexes_.empty()) {
       throw std::invalid_argument(std::format("Unexpected tabulation at {}", lexes_[0].GetPosition()));
     }
-    std::println("All ok");
   }
 
  private:
+
+  Tid tid;
+
   std::span<Lexem> lexes_;
   int in_cycle_ = 0;
   size_t cur_indent_ = 0;
+
+  void NewScope() {
+    tid.NewScope();
+    cur_indent_ += 4;
+  }
+
+  void CloseScope() {
+    tid.CloseScope();
+    cur_indent_ -= 4;
+  }
 
   void Program() {
     while (!lexes_.empty()) {
@@ -147,7 +160,7 @@ export class SyntaxValidator {
     Expression();
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
-    cur_indent_ += 4;
+    NewScope();
     while (SpacesAmount() == cur_indent_) {
       SkipLexem(Lex::kSeparator);
       if (lexes_.at(0).GetType() != Lex::kKeyworkd || lexes_.at(0).GetData() != "case") {
@@ -156,11 +169,11 @@ export class SyntaxValidator {
       SkipLexem(Lex::kKeyworkd, "case");
       Expression();
       SkipLexem(Lex::kKeyworkd, ":");
-      cur_indent_ += 4;
+      NewScope();
       Program();
-      cur_indent_ -= 4;
+      CloseScope();
     }
-    cur_indent_ -= 4;
+    CloseScope();
   }
 
   void Expression() {
@@ -174,16 +187,22 @@ export class SyntaxValidator {
     static std::set un_op = {
       "+"sv, "-"sv, "not"sv
     };
+    static std::set open_bracket = {
+      "("sv, "["sv, "{"sv
+    };
+    static std::set close_bracket = {
+      ")"sv, "]"sv, "}"sv
+    };
 
     while (lexes_.at(0).GetType() != Lex::kKeyworkd && lexes_.at(0).GetType() != Lex::kEndLine) {
       if (prev_dot && lexes_.at(0).GetType() != Lex::kId) {
         throw std::invalid_argument(std::format("SyntaxError: expected identifier after operator dot at {}", lexes_.at(0).GetPosition()));
       }
       if (lexes_.at(0).GetType() == Lex::kOperator) {
-        if (lexes_.at(0).GetData() == "(") {
+        if (open_bracket.contains(lexes_.at(0).GetData())) {
           prev_operator = true;
           ++cur_brace_balance;
-        } else if (lexes_.at(0).GetData() == ")") {
+        } else if (close_bracket.contains(lexes_.at(0).GetData())) {
           if (prev_operator) {
             throw std::invalid_argument(std::format("SyntaxError: invalid expression at {}: closing brace after operator", lexes_.at(0).GetPosition()));
           }
@@ -221,15 +240,15 @@ export class SyntaxValidator {
     Expression();
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
-    cur_indent_ += 4;
+    NewScope();
     Program();
-    cur_indent_ -= 4;
+    CloseScope();
     if (!lexes_.empty() && lexes_.at(0).GetType() == Lex::kKeyworkd && lexes_.at(0).GetData() == "else") {
       SkipLexem(Lex::kKeyworkd, "else");
       SkipLexem(Lex::kKeyworkd, ":");
-      cur_indent_ += 4;
+      NewScope();
       Program();
-      cur_indent_ -= 4;
+      CloseScope();
     }
   }
 
@@ -245,9 +264,9 @@ export class SyntaxValidator {
     SkipLexem(Lex::kOperator, ")");
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
-    cur_indent_ += 4;
+    NewScope();
     Program();
-    cur_indent_ -= 4;
+    CloseScope();
   }
 
   void While() {
@@ -255,11 +274,11 @@ export class SyntaxValidator {
     Expression();
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
-    cur_indent_ += 4;
+    NewScope();
     ++in_cycle_;
     Program();
     --in_cycle_;
-    cur_indent_ -= 4;
+    CloseScope();
   }
 
   void SkipParam() {

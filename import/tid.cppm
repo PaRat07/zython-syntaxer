@@ -19,7 +19,7 @@ export enum class variable_type {
 export class Tid {
  public:
 
-  Tid() : root(std::make_unique<Node>()) {}
+  Tid() : root(nullptr) {}
 
   struct Variable_Node {
     std::string name;
@@ -34,17 +34,19 @@ export class Tid {
   };
 
   void NewScope() {
-    auto Scope = std::make_unique<Node>();
-    Scope->parent = root.get();
-    root = std::move(Scope);
+    auto Scope = new Node();
+    Scope->parent = root;
+    root = Scope;
   }
 
   void CloseScope() {
-    root = std::make_unique<Node>(root->parent);
+    auto tmp = root;
+    root = root->parent;
+    delete tmp;
   }
 
   const Variable_Node* FindVariable(const std::string& name) {
-    Node* tec_root = root.get();
+    Node* tec_root = root;
     while (tec_root && !tec_root->data_variables.Find(name)) {
       tec_root = tec_root->parent;
     }
@@ -55,7 +57,7 @@ export class Tid {
   }
 
   const Function_Node* FindFunction(const std::string& name) {
-    Node* tec_root = root.get();
+    Node* tec_root = root;
     while (tec_root && !tec_root->data_functions.Find(name)) {
       tec_root = tec_root->parent;
     }
@@ -73,5 +75,5 @@ export class Tid {
     Bor<Function_Node> data_functions;
   };
 
-  std::unique_ptr<Node> root;
+  Node* root;
 };
