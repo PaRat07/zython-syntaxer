@@ -8,26 +8,62 @@ export module tid;
 
 import bor;
 
+using namespace std::string_view_literals;
+using namespace std::string_literals;
+
 export enum class variable_type {
   Integer,
   Float,
   String,
   Array,
-  Char
+  Char,
+  Undefined
 };
 
 export class Tid {
  public:
 
-  Tid() : root(nullptr) {}
+  static std::string_view ToValueString(const variable_type& type) {
+    switch (type) {
+      case variable_type::Integer: {
+        return "Integer"sv;
+      }
+      case variable_type::Float: {
+        return "Float"sv;
+      }
+      case variable_type::String: {
+        return "String"sv;
+      }
+      case variable_type::Array: {
+        return "Array"sv;
+      }
+      case variable_type::Char: {
+        return "Char"sv;
+      }
+      case variable_type::Undefined: {
+        return "Undefined"sv;
+      }
+    }
+    return "Undefined"sv;
+  }
+
+  Tid() : root(new Node()) {}
+  ~Tid() {
+    delete root;
+  }
 
   struct Variable_Node {
+    Variable_Node() = default;
+    explicit Variable_Node(const std::string& s) : name(s) {}
     std::string name;
-    variable_type type;
+    variable_type type = variable_type::Undefined;
+    variable_type in_array_type = variable_type::Undefined;
     int array_dimensions = 0;
   };
 
   struct Function_Node {
+    Function_Node() = default;
+    explicit Function_Node(const std::string& s) : name(s) {};
     std::string name;
     Variable_Node return_value;
     std::vector<Variable_Node> parameters;
@@ -45,7 +81,15 @@ export class Tid {
     delete tmp;
   }
 
-  const Variable_Node* FindVariable(const std::string& name) {
+  void InsertVariable(const Variable_Node& variable) {
+    root->data_variables.Insert(variable.name, variable);
+  }
+
+  void InsertFunction(const Function_Node& function) {
+    root->data_functions.Insert(function.name, function);
+  }
+
+  Variable_Node* FindVariable(const std::string& name) {
     Node* tec_root = root;
     while (tec_root && !tec_root->data_variables.Find(name)) {
       tec_root = tec_root->parent;
@@ -56,7 +100,7 @@ export class Tid {
     return &tec_root->data_variables.GetData(name);
   }
 
-  const Function_Node* FindFunction(const std::string& name) {
+  Function_Node* FindFunction(const std::string& name) {
     Node* tec_root = root;
     while (tec_root && !tec_root->data_functions.Find(name)) {
       tec_root = tec_root->parent;

@@ -1,12 +1,10 @@
+a = "aaa"
+
 def main():
-    a = [[10]]
-    a = (12+"sdjhjhs #asdasd")
-    a = 100
-    a = 100.100
-    a = a.b
-    match a+a[10]:
-        case:
-            zov
-    while (+a+1,f = c and (d or f)):
-        if (a == 12):
-            break
+    c = 1
+
+    if c + a == 1:
+        d = 1
+
+def penis():
+    penis = "ppp"

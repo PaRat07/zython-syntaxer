@@ -64,7 +64,7 @@ std::string_view ToString(Lex lex) {
 
 export class SyntaxValidator {
  public:
-  SyntaxValidator(std::string filename) {
+  SyntaxValidator(const std::string& filename) {
     auto lexes_own = Lexer(filename, "token.txt").Scan();
     bool prev_endline = false;
     std::vector<Lexem> lexes_filtered;
@@ -109,6 +109,7 @@ export class SyntaxValidator {
   }
 
   void Program() {
+    Tid::Variable_Node* prev_id = nullptr;
     while (!lexes_.empty()) {
       while (lexes_.at(0).GetType() == Lex::kEndLine) {
         SkipLexem(Lex::kEndLine);
@@ -149,7 +150,25 @@ export class SyntaxValidator {
           throw std::invalid_argument(std::format("SyntaxError: expected code, got {}", lexes_.at(0).GetData()));
         }
       } else {
-        Expression();
+        if (lexes_.at(0).GetType() == Lex::kId) {
+          prev_id = tid.FindVariable(lexes_.at(0).GetData());
+          if (prev_id == nullptr) {
+            if (lexes_.at(1).GetData() == "=") {
+              tid.InsertVariable(Tid::Variable_Node(lexes_.at(0).GetData()));
+              prev_id = tid.FindVariable(lexes_.at(0).GetData());
+              SkipLexem(Lex::kId);
+              SkipLexem(Lex::kOperator);
+            }
+          }
+        }
+        auto type = Expression();
+        if (prev_id != nullptr) {
+          if (type == variable_type::Undefined) {
+            throw std::invalid_argument("type mismatch: Undefined Expression");
+          }
+          prev_id->type = type;
+          prev_id = nullptr;
+        }
         SkipLexem(Lex::kEndLine);
       }
     }
@@ -176,7 +195,20 @@ export class SyntaxValidator {
     CloseScope();
   }
 
-  void Expression() {
+  static variable_type GetType(const Lexem& lex) {
+    if (lex.GetType() == Lex::kIntLiter) {
+      return variable_type::Integer;
+    }
+    if (lex.GetType() == Lex::kFloatLiter) {
+      return variable_type::Float;
+    }
+    if (lex.GetType() == Lex::kStringLiter) {
+      return variable_type::String;
+    }
+    return variable_type::Undefined;
+  }
+
+  variable_type Expression() {
     int cur_brace_balance = 0;
     bool prev_operator = true;
     bool prev_dot = false;
@@ -193,7 +225,10 @@ export class SyntaxValidator {
     static std::set close_bracket = {
       ")"sv, "]"sv, "}"sv
     };
-
+    static std::set type_values = {
+      Lex::kId, Lex::kFloatLiter, Lex::kStringLiter, Lex::kIntLiter
+    };
+    variable_type type = variable_type::Undefined;
     while (lexes_.at(0).GetType() != Lex::kKeyworkd && lexes_.at(0).GetType() != Lex::kEndLine) {
       if (prev_dot && lexes_.at(0).GetType() != Lex::kId) {
         throw std::invalid_argument(std::format("SyntaxError: expected identifier after operator dot at {}", lexes_.at(0).GetPosition()));
@@ -227,12 +262,27 @@ export class SyntaxValidator {
         }
         prev_operator = false;
       }
+      if (type_values.contains(lexes_.at(0).GetType())) {
+        if (lexes_.at(0).GetType() == Lex::kId) {
+          auto val = tid.FindVariable(lexes_.at(0).GetData());
+          if (val->type != type && type != variable_type::Undefined) {
+            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}", Tid::ToValueString(type), Tid::ToValueString(val->type)));
+          }
+          type = val->type;
+        } else {
+          if (GetType(lexes_.at(0)) != type && type != variable_type::Undefined) {
+            throw std::invalid_argument("pizda");
+          }
+          type = GetType(lexes_.at(0));
+        }
+      }
       prev_dot = lexes_.at(0).GetData() == ".";
       SkipLexem(lexes_.at(0).GetType());
     }
     if (cur_brace_balance > 0) {
       throw std::invalid_argument(std::format("SyntaxError: need extra brace at {}", lexes_.at(0).GetPosition()));
     }
+    return type;
   }
 
   void IfElse() {
@@ -254,6 +304,14 @@ export class SyntaxValidator {
 
   void DeclFunc() {
     SkipLexem(Lex::kKeyworkd, "def");
+    if (tid.FindFunction(lexes_.at(0).GetData())) {
+      throw std::invalid_argument(std::format("function override {}, at {}",
+        lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+    }
+
+    tid.InsertFunction(Tid::Function_Node(lexes_.at(0).GetData()));
+    auto func = tid.FindFunction(lexes_.at(0).GetData());
+
     SkipLexem(Lex::kId);
     SkipLexem(Lex::kOperator, "(");
     while (lexes_.at(0).GetType() != Lex::kOperator ||
@@ -289,6 +347,12 @@ export class SyntaxValidator {
 
   void SkipLexem(Lex type) {
     OPTIMIZING_ASSERT(type != Lex::kKeyworkd);
+    if (type == Lex::kId) {
+      if (!tid.FindVariable(lexes_.at(0).GetData()) && !tid.FindFunction(lexes_.at(0).GetData())) {
+        throw std::invalid_argument(std::format("uninitialized variable {} at {}",
+          lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+      }
+    }
     if (lexes_.at(0).GetType() != type) {
       throw std::invalid_argument(std::format(
           "expected {}, got {} at {}", ToString(type), lexes_[0].GetData(), lexes_[0].GetPosition()));
