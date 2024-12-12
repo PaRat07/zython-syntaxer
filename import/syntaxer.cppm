@@ -151,14 +151,22 @@ export class SyntaxValidator {
         }
       } else {
         if (lexes_.at(0).GetType() == Lex::kId) {
-          prev_id = tid.FindVariable(lexes_.at(0).GetData());
-          if (prev_id == nullptr) {
-            if (lexes_.at(1).GetData() == "=") {
-              tid.InsertVariable(Tid::Variable_Node(lexes_.at(0).GetData()));
-              prev_id = tid.FindVariable(lexes_.at(0).GetData());
-              SkipLexem(Lex::kId);
-              SkipLexem(Lex::kOperator);
+          if (lexes_.at(1).GetData() != "(") {
+            prev_id = tid.FindVariable(lexes_.at(0).GetData());
+            if (prev_id == nullptr) {
+              if (lexes_.at(1).GetData() == "=") {
+                tid.InsertVariable(Tid::Variable_Node(lexes_.at(0).GetData()));
+                prev_id = tid.FindVariable(lexes_.at(0).GetData());
+                SkipLexem(Lex::kId);
+                SkipLexem(Lex::kOperator);
+              }
             }
+          } else {
+            if (!tid.FindFunction(lexes_.at(0).GetData())) {
+              throw std::invalid_argument(std::format("undeclared function {}, at {}",
+                lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+            }
+            SkipLexem(Lex::kId);
           }
         }
         auto type = Expression();
@@ -265,13 +273,19 @@ export class SyntaxValidator {
       if (type_values.contains(lexes_.at(0).GetType())) {
         if (lexes_.at(0).GetType() == Lex::kId) {
           auto val = tid.FindVariable(lexes_.at(0).GetData());
+          if (!val) {
+            throw std::invalid_argument(std::format("undeclared variable {}, at {}",
+                                         lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+          }
           if (val->type != type && type != variable_type::Undefined) {
-            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}", Tid::ToValueString(type), Tid::ToValueString(val->type)));
+            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
+              Tid::ToValueString(type), Tid::ToValueString(val->type), lexes_.at(0).GetPosition()));
           }
           type = val->type;
         } else {
           if (GetType(lexes_.at(0)) != type && type != variable_type::Undefined) {
-            throw std::invalid_argument("pizda");
+            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
+              Tid::ToValueString(type), Tid::ToValueString(GetType(lexes_.at(0))), lexes_.at(0).GetPosition()));
           }
           type = GetType(lexes_.at(0));
         }
@@ -304,6 +318,7 @@ export class SyntaxValidator {
 
   void DeclFunc() {
     SkipLexem(Lex::kKeyworkd, "def");
+
     if (tid.FindFunction(lexes_.at(0).GetData())) {
       throw std::invalid_argument(std::format("function override {}, at {}",
         lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
@@ -312,17 +327,29 @@ export class SyntaxValidator {
     tid.InsertFunction(Tid::Function_Node(lexes_.at(0).GetData()));
     auto func = tid.FindFunction(lexes_.at(0).GetData());
 
+    NewScope();
+
     SkipLexem(Lex::kId);
     SkipLexem(Lex::kOperator, "(");
     while (lexes_.at(0).GetType() != Lex::kOperator ||
            lexes_.at(0).GetData() != ")") {
-      SkipParam();
-      SkipLexem(Lex::kOperator, ",");
+      auto type = Tid::TypeFromString(lexes_.at(0).GetData());
+      SkipLexem(Lex::kId, lexes_.at(0).GetData());
+      SkipLexem(Lex::kKeyworkd, ":");
+      auto name = lexes_.at(0).GetData();
+      if (tid.FindVariable(name)) {
+        throw std::invalid_argument(std::format("variable redefinition {}, at {}",
+          name, lexes_.at(0).GetPosition()));
+      }
+      tid.InsertVariable(Tid::Variable_Node(name, type));
+      SkipLexem(Lex::kId);
+      if (lexes_.at(0).GetData() == ",") {
+        SkipLexem(Lex::kOperator, ",");
+      }
     }
     SkipLexem(Lex::kOperator, ")");
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
-    NewScope();
     Program();
     CloseScope();
   }

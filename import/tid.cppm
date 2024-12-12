@@ -3,6 +3,7 @@ module;
 #include <memory>
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 export module tid;
 
@@ -22,6 +23,19 @@ export enum class variable_type {
 
 export class Tid {
  public:
+
+  static variable_type TypeFromString(const std::string& str) {
+    static const std::unordered_map<std::string, variable_type> actions = {
+      {"int", variable_type::Integer },
+      {"float", variable_type::Float},
+      {"string", variable_type::String}
+    };
+    auto it = actions.find(str);
+    if (it == actions.end()) {
+      return variable_type::Undefined;
+    }
+    return it->second;
+  }
 
   static std::string_view ToValueString(const variable_type& type) {
     switch (type) {
@@ -55,6 +69,8 @@ export class Tid {
   struct Variable_Node {
     Variable_Node() = default;
     explicit Variable_Node(const std::string& s) : name(s) {}
+    explicit Variable_Node(const std::string& s, variable_type type) :
+    name(s), type(type) {}
     std::string name;
     variable_type type = variable_type::Undefined;
     variable_type in_array_type = variable_type::Undefined;
@@ -63,7 +79,7 @@ export class Tid {
 
   struct Function_Node {
     Function_Node() = default;
-    explicit Function_Node(const std::string& s) : name(s) {};
+    explicit Function_Node(const std::string& s) : name(s) {}
     std::string name;
     Variable_Node return_value;
     std::vector<Variable_Node> parameters;

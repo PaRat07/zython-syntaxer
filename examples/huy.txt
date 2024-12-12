@@ -1,7 +1,16 @@
-a = "aaa"
+a = 1
+
+def fn(int: e):
+    if e == 1:
+        pass
+
+if e == 1:
+    pass
 
 def main():
     c = 1
+
+    fn(1)
 
     if c + a == 1:
         d = 1
