@@ -97,6 +97,7 @@ export class SyntaxValidator {
   std::span<Lexem> lexes_;
   int in_cycle_ = 0;
   size_t cur_indent_ = 0;
+  std::vector<Tid::Function_Node*> tec_func = { nullptr };
 
   void NewScope() {
     tid.NewScope();
@@ -146,6 +147,17 @@ export class SyntaxValidator {
           }
           SkipLexem(Lex::kKeyworkd, "continue");
           SkipLexem(Lex::kEndLine);
+        } else if (lexes_.at(0).GetData() == "return") {
+          if (tec_func.back() == nullptr) {
+            throw std::invalid_argument(std::format("SyntaxError: return out of func at {}", lexes_.at(0).GetPosition()));
+          }
+          SkipLexem(Lex::kKeyworkd, "return");
+          auto func_type = Tid::Variable_Node("return", Expression());
+          if (func_type.type != tec_func.back()->return_value.type && tec_func.back()->return_value.type != variable_type::Undefined) {
+            throw std::invalid_argument(std::format("type mismatch: cannot be combined return values {} and {}, at {}",
+              Tid::ToValueString(func_type.type), Tid::ToValueString(tec_func.back()->return_value.type), lexes_.at(0).GetPosition()));
+          }
+          tec_func.back()->return_value = func_type;
         } else {
           throw std::invalid_argument(std::format("SyntaxError: expected code, got {}", lexes_.at(0).GetData()));
         }
@@ -272,16 +284,28 @@ export class SyntaxValidator {
       }
       if (type_values.contains(lexes_.at(0).GetType())) {
         if (lexes_.at(0).GetType() == Lex::kId) {
-          auto val = tid.FindVariable(lexes_.at(0).GetData());
-          if (!val) {
-            throw std::invalid_argument(std::format("undeclared variable {}, at {}",
-                                         lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+          variable_type val_type = variable_type::Undefined;
+          if (lexes_.at(1).GetData() != "(") {
+            auto val = tid.FindVariable(lexes_.at(0).GetData());
+            if (!val) {
+              throw std::invalid_argument(std::format("undeclared variable {}, at {}",
+                                           lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+            }
+            val_type = val->type;
+          } else {
+            auto func = tid.FindFunction(lexes_.at(0).GetData());
+            if (!func) {
+              throw std::invalid_argument(std::format("undeclared func {}, at {}",
+                                           lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+            }
+            val_type = func->return_value.type;
+            SkipParams();
           }
-          if (val->type != type && type != variable_type::Undefined) {
+          if (val_type != type && type != variable_type::Undefined) {
             throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
-              Tid::ToValueString(type), Tid::ToValueString(val->type), lexes_.at(0).GetPosition()));
+              Tid::ToValueString(type), Tid::ToValueString(val_type), lexes_.at(0).GetPosition()));
           }
-          type = val->type;
+          type = val_type;
         } else {
           if (GetType(lexes_.at(0)) != type && type != variable_type::Undefined) {
             throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
@@ -297,6 +321,44 @@ export class SyntaxValidator {
       throw std::invalid_argument(std::format("SyntaxError: need extra brace at {}", lexes_.at(0).GetPosition()));
     }
     return type;
+  }
+
+  void SkipParams() {
+    auto func = tid.FindFunction(lexes_.at(0).GetData());
+    SkipLexem(lexes_.at(0).GetType());
+    SkipLexem(lexes_.at(0).GetType(), "(");
+    int ind = 0;
+    while (lexes_.at(0).GetType() != Lex::kOperator) {
+      auto val = tid.FindVariable(lexes_.at(0).GetData());
+      variable_type type;
+      if (!val) {
+        if (lexes_.at(0).GetType() == Lex::kId) {
+          throw std::invalid_argument(std::format("undeclared variable {}, at {}",
+            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
+        }
+        type = GetType(lexes_.at(0));
+      } else {
+        type = val->type;
+      }
+
+      if (ind >= func->parameters.size()) {
+        throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
+          std::to_string(func->parameters.size()), ind, lexes_.at(0).GetPosition()));
+      }
+      if (type != func->parameters[ind].type) {
+        throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
+          Tid::ToValueString(type), Tid::ToValueString(func->parameters[ind].type), lexes_.at(0).GetPosition()));
+      }
+      SkipLexem(lexes_.at(0).GetType());
+      if (lexes_.at(0).GetData() == ",") {
+        SkipLexem(lexes_.at(0).GetType());
+      }
+      ++ind;
+    }
+    if (ind != func->parameters.size()) {
+      throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
+          std::to_string(func->parameters.size()), ind, lexes_.at(0).GetPosition()));
+    }
   }
 
   void IfElse() {
@@ -325,7 +387,7 @@ export class SyntaxValidator {
     }
 
     tid.InsertFunction(Tid::Function_Node(lexes_.at(0).GetData()));
-    auto func = tid.FindFunction(lexes_.at(0).GetData());
+    tec_func.push_back(tid.FindFunction(lexes_.at(0).GetData()));
 
     NewScope();
 
@@ -342,6 +404,7 @@ export class SyntaxValidator {
           name, lexes_.at(0).GetPosition()));
       }
       tid.InsertVariable(Tid::Variable_Node(name, type));
+      tec_func.back()->parameters.emplace_back(name, type);
       SkipLexem(Lex::kId);
       if (lexes_.at(0).GetData() == ",") {
         SkipLexem(Lex::kOperator, ",");
@@ -352,6 +415,7 @@ export class SyntaxValidator {
     SkipLexem(Lex::kEndLine);
     Program();
     CloseScope();
+    tec_func.pop_back();
   }
 
   void While() {
@@ -364,12 +428,6 @@ export class SyntaxValidator {
     Program();
     --in_cycle_;
     CloseScope();
-  }
-
-  void SkipParam() {
-    SkipLexem(Lex::kId);
-    SkipLexem(Lex::kKeyworkd, ":");
-    SkipLexem(Lex::kId);
   }
 
   void SkipLexem(Lex type) {

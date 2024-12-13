@@ -4,16 +4,19 @@ def fn(int: e):
     if e == 1:
         pass
 
-if e == 1:
-    pass
-
-def main():
+def main(string: penis, int: b):
     c = 1
 
-    fn(1)
+    fn(1, 1)
 
     if c + a == 1:
         d = 1
+        return 1
+
+
+    return "pizda"
 
 def penis():
-    penis = "ppp"
+    penis = "penis"
+    if penis == main("cock", 1):
+        pass
