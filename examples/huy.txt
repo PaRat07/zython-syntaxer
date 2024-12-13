@@ -2,21 +2,19 @@ a = 1
 
 def fn(int: e):
     if e == 1:
-        pass
+        return "pizda"
 
-def main(string: penis, int: b):
+def main(string: penis):
     c = 1
 
-    fn(1, 1)
+    fn(1)
 
     if c + a == 1:
         d = 1
-        return 1
 
-
-    return "pizda"
+    return fn(1)
 
 def penis():
     penis = "penis"
-    if penis == main("cock", 1):
+    if 1 == 12 * main("cock" + penis):
         pass

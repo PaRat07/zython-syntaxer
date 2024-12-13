@@ -178,7 +178,7 @@ export class SyntaxValidator {
               throw std::invalid_argument(std::format("undeclared function {}, at {}",
                 lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
-            SkipLexem(Lex::kId);
+            SkipParams();
           }
         }
         auto type = Expression();
@@ -228,7 +228,7 @@ export class SyntaxValidator {
     return variable_type::Undefined;
   }
 
-  variable_type Expression() {
+  variable_type Expression(bool in_func = false) {
     int cur_brace_balance = 0;
     bool prev_operator = true;
     bool prev_dot = false;
@@ -264,6 +264,10 @@ export class SyntaxValidator {
           prev_operator = false;
           --cur_brace_balance;
           if (cur_brace_balance < 0) {
+            if (in_func && lexes_.at(1).GetData() != ")") {
+              SkipLexem(Lex::kOperator, ")");
+              break;
+            }
             throw std::invalid_argument(std::format("SyntaxError: extra brace at {}", lexes_.at(0).GetPosition()));
           }
         } else if (un_op.contains(lexes_.at(0).GetData())) {
@@ -282,6 +286,7 @@ export class SyntaxValidator {
         }
         prev_operator = false;
       }
+      bool is_skip_params = false;
       if (type_values.contains(lexes_.at(0).GetType())) {
         if (lexes_.at(0).GetType() == Lex::kId) {
           variable_type val_type = variable_type::Undefined;
@@ -300,6 +305,7 @@ export class SyntaxValidator {
             }
             val_type = func->return_value.type;
             SkipParams();
+            is_skip_params = true;
           }
           if (val_type != type && type != variable_type::Undefined) {
             throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
@@ -315,7 +321,9 @@ export class SyntaxValidator {
         }
       }
       prev_dot = lexes_.at(0).GetData() == ".";
-      SkipLexem(lexes_.at(0).GetType());
+      if (!is_skip_params) {
+        SkipLexem(lexes_.at(0).GetType());
+      }
     }
     if (cur_brace_balance > 0) {
       throw std::invalid_argument(std::format("SyntaxError: need extra brace at {}", lexes_.at(0).GetPosition()));
@@ -328,28 +336,18 @@ export class SyntaxValidator {
     SkipLexem(lexes_.at(0).GetType());
     SkipLexem(lexes_.at(0).GetType(), "(");
     int ind = 0;
-    while (lexes_.at(0).GetType() != Lex::kOperator) {
-      auto val = tid.FindVariable(lexes_.at(0).GetData());
-      variable_type type;
-      if (!val) {
-        if (lexes_.at(0).GetType() == Lex::kId) {
-          throw std::invalid_argument(std::format("undeclared variable {}, at {}",
-            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
-        }
-        type = GetType(lexes_.at(0));
-      } else {
-        type = val->type;
-      }
-
+    while (lexes_.at(0).GetType() != Lex::kOperator &&
+      lexes_.at(0).GetType() != Lex::kEndLine &&
+      lexes_.at(0).GetType() != Lex::kKeyworkd) {
+      auto type = Expression(true);
       if (ind >= func->parameters.size()) {
         throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
-          std::to_string(func->parameters.size()), ind, lexes_.at(0).GetPosition()));
+          std::to_string(func->parameters.size()), ind + 1, lexes_.at(0).GetPosition()));
       }
       if (type != func->parameters[ind].type) {
         throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
           Tid::ToValueString(type), Tid::ToValueString(func->parameters[ind].type), lexes_.at(0).GetPosition()));
       }
-      SkipLexem(lexes_.at(0).GetType());
       if (lexes_.at(0).GetData() == ",") {
         SkipLexem(lexes_.at(0).GetType());
       }
