@@ -3,6 +3,7 @@ module;
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <unordered_map>
 #include <ranges>
 #include <vector>
 #include <span>
@@ -232,6 +233,23 @@ export class SyntaxValidator {
     return variable_type::Undefined;
   }
 
+  bool CheckTypeCast(variable_type& from, variable_type& to) {
+    return true;
+  }
+
+  static variable_type TypeFromCastString(const std::string& str) {
+    static const std::unordered_map<std::string, variable_type> actions = {
+      {"int", variable_type::Integer },
+      {"float", variable_type::Float},
+      {"str", variable_type::String}
+    };
+    auto it = actions.find(str);
+    if (it == actions.end()) {
+      return variable_type::Undefined;
+    }
+    return it->second;
+  }
+
   variable_type Expression(bool in_func = false) {
     int cur_brace_balance = in_func;
     bool prev_operator = true;
@@ -251,6 +269,9 @@ export class SyntaxValidator {
     };
     static std::set type_values = {
       Lex::kId, Lex::kFloatLiter, Lex::kStringLiter, Lex::kIntLiter
+    };
+    static std::set cast_keywords = {
+      "int"sv, "float"sv, "str"sv
     };
     variable_type type = variable_type::Undefined;
     while (lexes_.at(0).GetType() != Lex::kKeyworkd && lexes_.at(0).GetType() != Lex::kEndLine) {
@@ -293,7 +314,20 @@ export class SyntaxValidator {
         prev_operator = false;
       }
       if (type_values.contains(lexes_.at(0).GetType())) {
-        if (lexes_.at(0).GetType() == Lex::kId) {
+        if (lexes_.at(0).GetType() == Lex::kId && cast_keywords.contains(lexes_.at(0).GetData())) {
+          auto to_cast_type = TypeFromCastString(lexes_.at(0).GetData());
+          SkipLexem(Lex::kId, lexes_.at(0).GetData());
+          SkipLexem(Lex::kOperator, "(");
+          auto from_cast_type = Expression(true);
+          if (!CheckTypeCast(from_cast_type, to_cast_type)) {
+            throw std::invalid_argument(std::format("type mismatch: cannot cast from {} to {}, at {}",
+              Tid::ToValueString(from_cast_type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
+          }
+          if (to_cast_type != type && type != variable_type::Undefined) {
+            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
+              Tid::ToValueString(type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
+          }
+        } else if (lexes_.at(0).GetType() == Lex::kId) {
           variable_type val_type = variable_type::Undefined;
           if (lexes_.at(1).GetData() != "(") {
             auto val = tid.FindVariable(lexes_.at(0).GetData());

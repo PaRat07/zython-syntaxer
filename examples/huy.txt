@@ -7,9 +7,12 @@ def pizda(b: string):
 def main(a: int, b: int):
     return penis(1) + pizda("pizda")
 
+def cock(a: int):
+    return "penis"
+
 a = 1
 b = 2
 c = 3
 
-if a * b / (c + main(1, 52 * 12 / (c + 1) + a)) == 12:
+if a * b / (c + main(1, 52 * 12 / (c + 1) + a)) == int(12 + cock(12)):
     pass
