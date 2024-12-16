@@ -1,20 +1,15 @@
+def penis(a: int):
+    return 1
+
+def pizda(b: string):
+    return 2
+
+def main(a: int, b: int):
+    return penis(1) + pizda("pizda")
+
 a = 1
+b = 2
+c = 3
 
-def fn(int: e):
-    if e == 1:
-        return "pizda"
-
-def main(string: penis):
-    c = 1
-
-    fn(1)
-
-    if c + a == 1:
-        d = 1
-
-    return fn(1)
-
-def penis():
-    penis = "penis"
-    if 1 == 12 * main("cock" + penis):
-        pass
+if a * b / (c + main(1, 52 * 12 / (c + 1) + a)) == 12:
+    pass
