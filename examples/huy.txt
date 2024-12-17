@@ -8,7 +8,7 @@ def main(a: int, b: int):
     return penis(1) + pizda("pizda")
 
 def cock(a: int):
-    return "penis"
+    return 1
 
 a = 1
 b = 2

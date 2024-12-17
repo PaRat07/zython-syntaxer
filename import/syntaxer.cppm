@@ -15,6 +15,8 @@ import lexer;
 import lexem;
 import tid;
 
+import arifm_tree;
+
 #define OPTIMIZING_ASSERT(cond) \
   assert(cond);                 \
   [[assume(cond)]]
