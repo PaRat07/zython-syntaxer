@@ -17,7 +17,6 @@ export enum class variable_type {
   String,
   Array,
   Char,
-  Bool,
   Undefined
 };
 
@@ -75,6 +74,20 @@ export class Tid {
     variable_type type = variable_type::Undefined;
     variable_type in_array_type = variable_type::Undefined;
     int array_dimensions = 0;
+    bool operator==(const Variable_Node& rhs) const {
+      if (type == rhs.type) {
+        if (type == variable_type::Array) {
+          return in_array_type == rhs.in_array_type
+        && array_dimensions == rhs.array_dimensions;
+        }
+        return true;
+      }
+      return false;
+
+    }
+    bool operator!=(const Variable_Node& rhs) const {
+      return !(*this == rhs);
+    }
   };
 
   struct Function_Node {

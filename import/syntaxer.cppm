@@ -159,7 +159,7 @@ export class SyntaxValidator {
             throw std::invalid_argument(std::format("SyntaxError: return out of func at {}", lexes_.at(0).GetPosition()));
           }
           SkipLexem(Lex::kKeyworkd, "return");
-          auto func_type = Tid::Variable_Node("return", Expression());
+          auto func_type = Expression();
           if (func_type.type != tec_func.back()->return_value.type && tec_func.back()->return_value.type != variable_type::Undefined) {
             throw std::invalid_argument(std::format("type mismatch: cannot be combined return values {} and {}, at {}",
               Tid::ToValueString(func_type.type), Tid::ToValueString(tec_func.back()->return_value.type), lexes_.at(0).GetPosition()));
@@ -190,10 +190,13 @@ export class SyntaxValidator {
         }
         auto type = Expression();
         if (prev_id != nullptr) {
-          if (type == variable_type::Undefined) {
+          if (type.type == variable_type::Undefined) {
             throw std::invalid_argument("type mismatch: Undefined Expression");
           }
-          prev_id->type = type;
+          std::cout << type.array_dimensions << '\n';
+          prev_id->type = type.type;
+          prev_id->in_array_type = type.in_array_type;
+          prev_id->array_dimensions = type.array_dimensions;
           prev_id = nullptr;
         }
         SkipLexem(Lex::kEndLine);
@@ -216,7 +219,7 @@ export class SyntaxValidator {
       auto case_type = Expression();
       if (case_type != type) {
         throw std::invalid_argument(std::format("Expected type {}, got {} at {}",
-          Tid::ToValueString(case_type), Tid::ToValueString(type), lexes_.at(0).GetPosition()));
+          Tid::ToValueString(case_type.type), Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
       }
       SkipLexem(Lex::kKeyworkd, ":");
       NewScope();
@@ -240,7 +243,13 @@ export class SyntaxValidator {
   }
 
   bool CheckTypeCast(variable_type& from, variable_type& to) {
-    return true;
+    static std::set nums = {
+      variable_type::Float, variable_type::Integer
+    };
+    if (nums.contains(from) && nums.contains(to)) {
+      return true;
+    }
+    return to == variable_type::String;
   }
 
   static variable_type TypeFromCastString(const std::string& str) {
@@ -256,7 +265,38 @@ export class SyntaxValidator {
     return it->second;
   }
 
-  variable_type Expression(bool in_func = false) {
+  Tid::Variable_Node ParsMas() {
+    Tid::Variable_Node node;
+    node.type = variable_type::Array;
+    node.array_dimensions = 1;
+    SkipLexem(lexes_.at(0).GetType(), "[");
+    while (lexes_.at(0).GetData() != "]") {
+      if (lexes_.at(0).GetData() == "[") {
+        auto type = ParsMas();
+        if (node.in_array_type == variable_type::Undefined) {
+          node.in_array_type = type.in_array_type;
+          node.array_dimensions = type.array_dimensions + 1;
+        } else if (node.in_array_type != type.in_array_type
+          || node.array_dimensions != type.array_dimensions + 1) {
+          throw std::invalid_argument(std::format("Mas type error at {}", lexes_.at(0).GetPosition()));
+        }
+      } else {
+        auto type = Expression(true);
+        if (node.in_array_type == variable_type::Undefined) {
+          node.in_array_type = type.type;
+        } else if (type.type != node.in_array_type) {
+          throw std::invalid_argument(std::format("Mas type error at {}", lexes_.at(0).GetPosition()));
+        }
+      }
+      if (lexes_.at(0).GetData() == ",") {
+        SkipLexem(lexes_.at(0).GetType(), ",");
+      }
+    }
+    SkipLexem(lexes_.at(0).GetType(), "]");
+    return node;
+  }
+
+  Tid::Variable_Node Expression(bool in_func = false) {
     ArifmTree tree;
     int cur_brace_balance = in_func;
     bool prev_operator = true;
@@ -287,10 +327,20 @@ export class SyntaxValidator {
       if (prev_dot && lexes_.at(0).GetType() != Lex::kId) {
         throw std::invalid_argument(std::format("SyntaxError: expected identifier after operator dot at {}", lexes_.at(0).GetPosition()));
       }
+      bool is_skip_mas = false;
+      bool is_insert = false;
       if (lexes_.at(0).GetType() == Lex::kOperator) {
         if (open_bracket.contains(lexes_.at(0).GetData())) {
           prev_operator = true;
-          ++cur_brace_balance;
+          if (lexes_.at(0).GetData() == "[") {
+            auto type = ParsMas();
+            tree.Insert(Lexem(Lex::kId, "id",
+              lexes_.at(0).GetPosition().line, lexes_.at(0).GetPosition().index), type);
+            is_skip_mas = true;
+            is_insert = true;
+          } else {
+            ++cur_brace_balance;
+          }
         } else if (close_bracket.contains(lexes_.at(0).GetData())) {
           if (prev_operator) {
             throw std::invalid_argument(std::format("SyntaxError: invalid expression at {}: closing brace after operator", lexes_.at(0).GetPosition()));
@@ -319,7 +369,6 @@ export class SyntaxValidator {
         }
         prev_operator = false;
       }
-      bool is_insert = false;
       if (type_values.contains(lexes_.at(0).GetType())) {
         if (lexes_.at(0).GetType() == Lex::kId && cast_keywords.contains(lexes_.at(0).GetData())) {
           auto to_cast_type = TypeFromCastString(lexes_.at(0).GetData());
@@ -329,11 +378,11 @@ export class SyntaxValidator {
           SkipLexem(Lex::kId, lexes_.at(0).GetData());
           SkipLexem(Lex::kOperator, "(");
           auto from_cast_type = Expression(true);
-          if (!CheckTypeCast(from_cast_type, to_cast_type)) {
+          if (!CheckTypeCast(from_cast_type.type, to_cast_type)) {
             throw std::invalid_argument(std::format("type mismatch: cannot cast from {} to {}, at {}",
-              Tid::ToValueString(from_cast_type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
+              Tid::ToValueString(from_cast_type.type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
           }
-          tree.Insert(lex, to_cast_type);
+          tree.Insert(lex, Tid::Variable_Node("p", to_cast_type));
         } else if (lexes_.at(0).GetType() == Lex::kId) {
           variable_type val_type = variable_type::Undefined;
           if (lexes_.at(1).GetData() != "(") {
@@ -342,38 +391,37 @@ export class SyntaxValidator {
               throw std::invalid_argument(std::format("undeclared variable {}, at {}",
                                            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
-            val_type = val->type;
             is_insert = true;
-            tree.Insert(lexes_.at(0), val_type);
+            tree.Insert(lexes_.at(0), *val);
           } else {
             auto func = tid.FindFunction(lexes_.at(0).GetData());
             if (!func) {
               throw std::invalid_argument(std::format("undeclared func {}, at {}",
                                            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
-            val_type = func->return_value.type;
 
-            tree.Insert(lexes_.at(0), val_type);
+            tree.Insert(lexes_.at(0), func->return_value);
             is_insert = true;
 
             SkipParams();
           }
         } else {
-          tree.Insert(lexes_.at(0), GetType(lexes_.at(0)));
+          tree.Insert(lexes_.at(0), Tid::Variable_Node("", GetType(lexes_.at(0))));
           is_insert = true;
         }
       }
       if (!is_insert) {
-        tree.Insert(lexes_.at(0), GetType(lexes_.at(0)));
+        tree.Insert(lexes_.at(0), Tid::Variable_Node("", GetType(lexes_.at(0))));
       }
       prev_dot = lexes_.at(0).GetData() == ".";
-      SkipLexem(lexes_.at(0).GetType());
+      if (!is_skip_mas) {
+        SkipLexem(lexes_.at(0).GetType());
+      }
     }
     if (cur_brace_balance > 0 && !(in_func && cur_brace_balance == 1)) {
       throw std::invalid_argument(std::format("SyntaxError: need extra brace at {}", lexes_.at(0).GetPosition()));
     }
     tree.build();
-
     return tree.check();
   }
 
@@ -390,9 +438,9 @@ export class SyntaxValidator {
         throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
           std::to_string(func->parameters.size()), ind + 1, lexes_.at(0).GetPosition()));
       }
-      if (type != func->parameters[ind].type) {
+      if (type != func->parameters[ind]) {
         throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
-          Tid::ToValueString(type), Tid::ToValueString(func->parameters[ind].type), lexes_.at(0).GetPosition()));
+          Tid::ToValueString(type.type), Tid::ToValueString(func->parameters[ind].type), lexes_.at(0).GetPosition()));
       }
       if (lexes_.at(0).GetData() == ",") {
         SkipLexem(lexes_.at(0).GetType());
@@ -408,9 +456,9 @@ export class SyntaxValidator {
   void IfElse() {
     SkipLexem(Lex::kKeyworkd, "if");
     auto type = Expression();
-    if (type != variable_type::Bool) {
-      throw std::invalid_argument(std::format("the type of expression in the condition is not equal boot, {}, at {}"
-        , Tid::ToValueString(type), lexes_.at(0).GetPosition()));
+    if (type.type != variable_type::Integer) {
+      throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
+        Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
     }
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
@@ -468,7 +516,11 @@ export class SyntaxValidator {
 
   void While() {
     SkipLexem(Lex::kKeyworkd, "while");
-    Expression();
+    auto type = Expression();
+    if (type.type != variable_type::Integer) {
+      throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
+        Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
+    }
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();

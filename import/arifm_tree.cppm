@@ -17,22 +17,23 @@ using namespace std::string_literals;
 export class ArifmTree {
   public:
 
-    void Insert(const Lexem& lex, const variable_type& type) {
+    void Insert(const Lexem& lex, const Tid::Variable_Node& type) {
+      std::cout << "insert pines: " << (int)type.in_array_type << '\n';
       data_.emplace_back(lex, type);
     }
     void build() {
       root = buildTreeFromTokens(infixToPostfix(data_));
     }
-    variable_type check() {
+    Tid::Variable_Node check() {
       return dfs(root.get());
     }
 
   private:
 
     struct Data {
-      Data(const Lexem lex, const variable_type& type) : lexem(lex), type(type) {}
+      Data(const Lexem lex, const Tid::Variable_Node& type) : lexem(lex), type(type) {}
       Lexem lexem;
-      variable_type type;
+      Tid::Variable_Node type;
     };
 
     std::vector<Data> data_;
@@ -124,20 +125,20 @@ export class ArifmTree {
       };
       return st.contains(oper.GetData());
     }
-    variable_type dfs(Node* node) {
+    Tid::Variable_Node dfs(Node* node) {
       if (node == nullptr) {
-        return variable_type::Undefined;
+        return Tid::Variable_Node("pp", variable_type::Undefined);
       }
       if (GetPriority(node->data.lexem) == 0) {
         return node->data.type;
       }
       auto f_type = dfs(node->left.get());
       auto s_type = dfs(node->right.get());
-      if (s_type != f_type) {
+      if (f_type != s_type) {
         throw std::invalid_argument("pizda");
       }
       if (IsLogicOperator(node->data.lexem)) {
-        return variable_type::Bool;
+        return Tid::Variable_Node("pp", variable_type::Integer);
       }
       return f_type;
     }
