@@ -9,17 +9,21 @@ module;
 #include <span>
 #include <set>
 
-export module syntaxer;
-
-import lexer;
-import lexem;
-import tid;
-
-import arifm_tree;
 
 #define OPTIMIZING_ASSERT(cond) \
   assert(cond);                 \
   [[assume(cond)]]
+
+export module syntaxer;
+
+
+import lexer;
+import lexem;
+
+import arifm_tree;
+
+import tid;
+
 
 using namespace std::string_view_literals;
 using namespace std::string_literals;
@@ -253,6 +257,7 @@ export class SyntaxValidator {
   }
 
   variable_type Expression(bool in_func = false) {
+    ArifmTree tree;
     int cur_brace_balance = in_func;
     bool prev_operator = true;
     bool prev_dot = false;

@@ -1,9 +1,8 @@
-import syntaxer;
 #include <iostream>
-#include <format>
-#include <print>
+
+import syntaxer;
 
 int main() {
   SyntaxValidator validator("huy.txt");
-  std::println("All ok, {}", 1);
+  std::cout << "All ok" << '\n';
 }
