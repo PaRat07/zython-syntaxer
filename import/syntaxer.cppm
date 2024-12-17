@@ -226,7 +226,7 @@ export class SyntaxValidator {
     CloseScope();
   }
 
-  static variable_type GetType(const Lexem& lex) {
+  static variable_type GetType(Lexem const& lex) {
     if (lex.GetType() == Lex::kIntLiter) {
       return variable_type::Integer;
     }
@@ -280,7 +280,6 @@ export class SyntaxValidator {
     static std::set cast_keywords = {
       "int"sv, "float"sv, "str"sv
     };
-    variable_type type = variable_type::Undefined;
     while (lexes_.at(0).GetType() != Lex::kKeyworkd && lexes_.at(0).GetType() != Lex::kEndLine) {
       if (lexes_.at(0).GetData() == "," && in_func) {
         break;
@@ -320,9 +319,13 @@ export class SyntaxValidator {
         }
         prev_operator = false;
       }
+      bool is_insert = false;
       if (type_values.contains(lexes_.at(0).GetType())) {
         if (lexes_.at(0).GetType() == Lex::kId && cast_keywords.contains(lexes_.at(0).GetData())) {
           auto to_cast_type = TypeFromCastString(lexes_.at(0).GetData());
+
+          auto lex = lexes_.at(0);
+
           SkipLexem(Lex::kId, lexes_.at(0).GetData());
           SkipLexem(Lex::kOperator, "(");
           auto from_cast_type = Expression(true);
@@ -330,10 +333,7 @@ export class SyntaxValidator {
             throw std::invalid_argument(std::format("type mismatch: cannot cast from {} to {}, at {}",
               Tid::ToValueString(from_cast_type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
           }
-          if (to_cast_type != type && type != variable_type::Undefined) {
-            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
-              Tid::ToValueString(type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
-          }
+          tree.Insert(lex, to_cast_type);
         } else if (lexes_.at(0).GetType() == Lex::kId) {
           variable_type val_type = variable_type::Undefined;
           if (lexes_.at(1).GetData() != "(") {
@@ -343,6 +343,8 @@ export class SyntaxValidator {
                                            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
             val_type = val->type;
+            is_insert = true;
+            tree.Insert(lexes_.at(0), val_type);
           } else {
             auto func = tid.FindFunction(lexes_.at(0).GetData());
             if (!func) {
@@ -350,20 +352,19 @@ export class SyntaxValidator {
                                            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
             val_type = func->return_value.type;
+
+            tree.Insert(lexes_.at(0), val_type);
+            is_insert = true;
+
             SkipParams();
           }
-          if (val_type != type && type != variable_type::Undefined) {
-            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
-              Tid::ToValueString(type), Tid::ToValueString(val_type), lexes_.at(0).GetPosition()));
-          }
-          type = val_type;
         } else {
-          if (GetType(lexes_.at(0)) != type && type != variable_type::Undefined) {
-            throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
-              Tid::ToValueString(type), Tid::ToValueString(GetType(lexes_.at(0))), lexes_.at(0).GetPosition()));
-          }
-          type = GetType(lexes_.at(0));
+          tree.Insert(lexes_.at(0), GetType(lexes_.at(0)));
+          is_insert = true;
         }
+      }
+      if (!is_insert) {
+        tree.Insert(lexes_.at(0), GetType(lexes_.at(0)));
       }
       prev_dot = lexes_.at(0).GetData() == ".";
       SkipLexem(lexes_.at(0).GetType());
@@ -371,7 +372,9 @@ export class SyntaxValidator {
     if (cur_brace_balance > 0 && !(in_func && cur_brace_balance == 1)) {
       throw std::invalid_argument(std::format("SyntaxError: need extra brace at {}", lexes_.at(0).GetPosition()));
     }
-    return type;
+    tree.build();
+
+    return tree.check();
   }
 
   void SkipParams() {
@@ -404,7 +407,11 @@ export class SyntaxValidator {
 
   void IfElse() {
     SkipLexem(Lex::kKeyworkd, "if");
-    Expression();
+    auto type = Expression();
+    if (type != variable_type::Bool) {
+      throw std::invalid_argument(std::format("the type of expression in the condition is not equal boot, {}, at {}"
+        , Tid::ToValueString(type), lexes_.at(0).GetPosition()));
+    }
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();

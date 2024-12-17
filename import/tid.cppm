@@ -17,6 +17,7 @@ export enum class variable_type {
   String,
   Array,
   Char,
+  Bool,
   Undefined
 };
 

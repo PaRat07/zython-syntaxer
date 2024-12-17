@@ -1,18 +1,18 @@
-def penis(a: int):
+def man(a: int):
     return 1
 
-def pizda(b: string):
+def women(b: string):
     return 2
 
 def main(a: int, b: int):
-    return penis(1) + pizda("pizda")
+    return man(1) + women("man")
 
-def cock(a: int):
-    return 1
+def man2(a: int):
+    return "ppp"
 
 a = 1
 b = 2
 c = 3
 
-if a * b / (c + main(1, 52 * 12 / (c + 1) + a)) == int(12 + cock(12)):
+if str(a * b / (c + main(1, 52 * 12 / (c + 1) + a))) == "12" + man2(12):
     pass
