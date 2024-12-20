@@ -1,0 +1,19 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build and Deploy
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: 'docs'
+          destination: 'docs/_site'
