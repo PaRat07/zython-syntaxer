@@ -15,5 +15,5 @@ jobs:
       - name: Build and Deploy
         uses: actions/jekyll-build-pages@v1
         with:
-          source: 'docs'
+          source: 'doc'
           destination: 'docs/_site'
