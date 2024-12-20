@@ -18,8 +18,14 @@ jobs:
       - name: Set up Doxygen
         run: sudo apt-get install doxygen graphviz
 
+      - name: Debug current directory
+        run: pwd && ls
+
+      - name: Check submodule files
+        run: ls -R ./extern/lexer
+
       - name: Generate Documentation
-        run: doxygen Doxyfile && ls
+        run: doxygen Doxyfile
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
