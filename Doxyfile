@@ -13,7 +13,7 @@ OUTPUT_DIRECTORY       = ./docs
 RECURSIVE              = YES
 
 # Папки и файлы для документирования
-INPUT                  = ./import ./extern/import
+INPUT                  = .
 FILE_PATTERNS          = *.cppm
 
 # Генерация HTML-документации
