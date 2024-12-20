@@ -14,6 +14,7 @@ RECURSIVE              = YES
 
 # Папки и файлы для документирования
 RECURSIVE              = YES
+INPUT = .
 FILE_PATTERNS          = *.cppm *.cpp
 
 # Генерация HTML-документации
