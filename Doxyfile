@@ -13,8 +13,8 @@ OUTPUT_DIRECTORY       = ./docs
 RECURSIVE              = YES
 
 # Папки и файлы для документирования
-INPUT                  =
-FILE_PATTERNS          = *.cppm
+RECURSIVE              = YES
+FILE_PATTERNS          = *.cppm *.cpp
 
 # Генерация HTML-документации
 GENERATE_HTML          = YES
