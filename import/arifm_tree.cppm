@@ -18,7 +18,6 @@ export class ArifmTree {
   public:
 
     void Insert(const Lexem& lex, const Tid::Variable_Node& type) {
-      std::cout << "insert pines: " << (int)type.in_array_type << '\n';
       data_.emplace_back(lex, type);
     }
     void build() {
@@ -26,6 +25,11 @@ export class ArifmTree {
     }
     Tid::Variable_Node check() {
       return dfs(root.get());
+    }
+    Tid::Variable_Node GetLats() {
+      auto u = data_.back().type;
+      data_.pop_back();
+      return u;
     }
 
   private:
@@ -101,6 +105,10 @@ export class ArifmTree {
         output.push_back(operators.back());
         operators.pop_back();
       }
+      for (auto &u : output) {
+        std::cout << u.lexem.GetData() << " ";
+      }
+      std::cout << '\n';
       return output;
     }
     std::unique_ptr<Node> buildTreeFromTokens(const std::vector<Data>& tokens) {
@@ -112,8 +120,10 @@ export class ArifmTree {
           auto node = std::make_unique<Node>(token);
           node->right = std::move(stack.back());
           stack.pop_back();
-          node->left = std::move(stack.back());
-          stack.pop_back();
+          if (!stack.empty()) {
+            node->left = std::move(stack.back());
+            stack.pop_back();
+          }
           stack.push_back(std::move(node));
         }
       }
@@ -132,10 +142,16 @@ export class ArifmTree {
       if (GetPriority(node->data.lexem) == 0) {
         return node->data.type;
       }
+      if (!node->right.get()) {
+        return dfs(node->left.get());
+      }
+      if (!node->left.get()) {
+        return dfs(node->right.get());
+      }
       auto f_type = dfs(node->left.get());
       auto s_type = dfs(node->right.get());
       if (f_type != s_type) {
-        throw std::invalid_argument("pizda");
+        throw std::invalid_argument(std::format("type mismatch"));
       }
       if (IsLogicOperator(node->data.lexem)) {
         return Tid::Variable_Node("pp", variable_type::Integer);

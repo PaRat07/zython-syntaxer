@@ -82,6 +82,12 @@ export class Tid {
         }
         return true;
       }
+      if (type == variable_type::Array && array_dimensions == 0) {
+        return in_array_type == rhs.type;
+      }
+      if (rhs.type == variable_type::Array && rhs.array_dimensions == 0) {
+        return in_array_type == rhs.type;
+      }
       return false;
 
     }
