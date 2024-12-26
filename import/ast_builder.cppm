@@ -74,20 +74,11 @@ struct ExpressionI {
     std::string_view store_to;
   };
 
-  struct Setter {
-    const ExpressionI *data;
-    std::string_view load_from;
-  };
-
   virtual auto GetResultType() const -> const TypePtr& = 0;
   virtual ~ExpressionI() = default;
-  virtual void Get(std::ostream&, std::string_view to_reg) const = 0;
-  virtual void Set(std::ostream&, std::string_view from_reg) const = 0;
+  virtual void Evaluate(std::ostream&, std::string_view to_reg) const = 0;
 
-  Getter Get() const {
-    return { this };
-  }
-  Setter Set() const {
+  Getter Evaluate() const {
     return { this };
   }
 
@@ -99,12 +90,7 @@ struct ExpressionI {
 using ExprPtr = std::unique_ptr<ExpressionI>;
 
 std::ostream &operator<<(std::ostream &out, ExpressionI::Getter expr) {
-  expr.data->Get(out, expr.store_to);
-  return out;
-}
-
-std::ostream &operator<<(std::ostream &out, ExpressionI::Setter expr) {
-  expr.data->Set(out, expr.load_from);
+  expr.data->Evaluate(out, expr.store_to);
   return out;
 }
 
@@ -140,11 +126,11 @@ struct Subtract final : BinaryOp {
     return left->GetResultType();
   }
 
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
-    left->Get(out, lbuf_name);
-    right->Get(out, rbuf_name);
+    left->Evaluate(out, lbuf_name);
+    right->Evaluate(out, rbuf_name);
     out << std::format("{} = {} {} {} {}\n",
       to_reg,
       (left->GetResultType()->Typename() == "i32" ? "sub" : "fsub"),
@@ -164,11 +150,11 @@ struct Add final : BinaryOp {
   virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
-    left->Get(out, lbuf_name);
-    right->Get(out, rbuf_name);
+    left->Evaluate(out, lbuf_name);
+    right->Evaluate(out, rbuf_name);
     out << std::format("{} = {} {} {} {}\n",
       to_reg,
       (left->GetResultType()->Typename() == "i32" ? "add" : "fsub"),
@@ -189,18 +175,18 @@ struct Divide final : BinaryOp {
     return left->GetResultType();
   }
 
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
     if (left->GetResultType()->TypeId() == Number::id) {
-      left->Get(out, lbuf_name);
-      right->Get(out, rbuf_name);
+      left->Evaluate(out, lbuf_name);
+      right->Evaluate(out, rbuf_name);
     } else {
       auto intlbuf_name = GetUniqueId();
       auto intrbuf_name = GetUniqueId();
 
-      left->Get(out, intlbuf_name);
-      right->Get(out, intrbuf_name);
+      left->Evaluate(out, intlbuf_name);
+      right->Evaluate(out, intrbuf_name);
 
       std::println(out, "{} = sitofp i32 {} to float", lbuf_name, intlbuf_name);
       std::println(out, "{} = sitofp i32 {} to float", lbuf_name, intlbuf_name);
@@ -225,11 +211,11 @@ struct DividAndRound final : BinaryOp {
     return left->GetResultType();
   }
 
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
-    left->Get(out, lbuf_name);
-    right->Get(out, rbuf_name);
+    left->Evaluate(out, lbuf_name);
+    right->Evaluate(out, rbuf_name);
     if (left->GetResultType()->TypeId() == Integer::id) {
       std::println(out, "{} = sdiv i32 {}, {}", to_reg, lbuf_name, rbuf_name);
     } else {
@@ -243,10 +229,6 @@ struct DividAndRound final : BinaryOp {
       std::print(out, "{} = fptosi float {} to i32", to_reg, ansbuf_name);
     }
   }
-
-  void Set(std::ostream&, std::string_view from_reg) const override {
-    throw std::logic_error("Can't assign to rvalue");
-  }
 };
 
 struct Multiply final : BinaryOp {
@@ -255,21 +237,17 @@ struct Multiply final : BinaryOp {
   virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
-    left->Get(out, lbuf_name);
-    right->Get(out, rbuf_name);
+    left->Evaluate(out, lbuf_name);
+    right->Evaluate(out, rbuf_name);
     out << std::format("{} = {} {} {} {}\n",
       to_reg,
       (left->GetResultType()->Typename() == "i32" ? "mul" : "fmul"),
       left->GetResultType()->Typename(),
       lbuf_name,
       rbuf_name);
-  }
-
-  void Set(std::ostream&, std::string_view from_reg) const override {
-    throw std::logic_error("Can't assign to rvalue");
   }
 };
 
@@ -282,7 +260,7 @@ struct StatementI {
 struct ReturnSttmnt : StatementI {
   ExprPtr value;
   void Get(std::ostream &out) const override {
-    out << "ret " << value->GetResultType()->Typename() << " " << value->Get() << "\n";
+    out << "ret " << value->GetResultType()->Typename() << " " << value->Evaluate() << "\n";
   }
 };
 
@@ -304,7 +282,7 @@ struct FunctionDecl final : ExpressionI {
     }
     out << ") {\n";
     for (auto&& i : exprs) {
-      out << i->Get() << "\n";
+      out << i->Evaluate() << "\n";
     }
     out << "}\n";
   }
@@ -312,7 +290,7 @@ struct FunctionDecl final : ExpressionI {
   auto GetResultType() const -> const TypePtr& override {
     return return_type;
   }
-  void Get(std::ostream&, std::string_view to_reg) const override {
+  void Evaluate(std::ostream&, std::string_view to_reg) const override {
     throw std::logic_error("Can't get value from function declaration");
   }
 };
@@ -323,10 +301,10 @@ struct FunctionInv final : ExpressionI {
   std::vector<ExprPtr> args;
   std::string func_name;
 
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     if (func_table[func_name].GetResultType()->Typename() == "void") {
       std::print(out, "call void {}({:n})", func_name, args | std::views::transform([] (const ExprPtr &expr) {
-        return expr->Get();
+        return expr->Evaluate();
       }));
     } else {
       std::print(out, "{} = {} call void {}({:n})",
@@ -335,7 +313,7 @@ struct FunctionInv final : ExpressionI {
         func_name,
         args
           | std::views::transform([] (const ExprPtr &expr) {
-            return expr->Get();
+            return expr->Evaluate();
           })
       );
     }
@@ -358,13 +336,10 @@ struct Assignment : ExpressionI {
     return value->GetResultType();
   }
 
-  void Get(std::ostream &out, std::string_view to_reg) const override {
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto buf_name = GetUniqueId();
-    value->Get(out, buf_name);
+    value->Evaluate(out, buf_name);
     std::println(out, "store {} {}, {}* {}", value->GetResultType()->Typename(), buf_name, value->GetResultType(), var_name);
     std::println(out, "{} = load {}, {}* %{}", to_reg, value->GetResultType()->Typename(), value->GetResultType()->Typename(), var_name);
-  }
-  void Set(std::ostream &out, std::string_view from_reg) const override {
-    throw std::logic_error("kys");
   }
 };
