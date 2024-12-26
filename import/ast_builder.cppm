@@ -37,8 +37,10 @@ template<typename U, typename V>
 static const std::unique_ptr<U> kPtrToType = std::make_unique<V>();
 
 struct Void : TypeI {
+  static constexpr size_t id = 2;
+
   virtual auto TypeId() const -> std::size_t override {
-    return 0;
+    return id;
   }
 
   virtual auto Typename() const -> std::string override {
@@ -47,8 +49,10 @@ struct Void : TypeI {
 };
 
 struct Integer : TypeI {
+  static constexpr size_t id = 1;
+
   virtual auto TypeId() const -> std::size_t override {
-    return 1;
+    return id;
   }
 
   virtual auto Typename() const -> std::string override {
@@ -57,8 +61,9 @@ struct Integer : TypeI {
 };
 
 struct Number : TypeI {
+  static constexpr size_t id = 2;
   virtual auto TypeId() const -> std::size_t override {
-    return 2;
+    return id;
   }
 
   virtual auto Typename() const -> std::string override {
@@ -110,13 +115,13 @@ std::ostream &operator<<(std::ostream &out, ExpressionI::Setter expr) {
 std::map<std::string, std::stack<std::unique_ptr<ExpressionI>>> tid;
 
 
-// struct Variable :  {
-//   std::string name;
-//   std::unique_ptr<TypeI> type;
-//   virtual auto GetResultType() const -> const std::unique_ptr<TypeI>& override {
-//     return type;
-//   }
-// };
+struct Variable : ExpressionI {
+  std::string name;
+  std::unique_ptr<TypeI> type;
+  virtual auto GetResultType() const -> const std::unique_ptr<TypeI>& override {
+    return type;
+  }
+};
 
 struct BinaryOp : ExpressionI {
   BinaryOp(ExprPtr l, ExprPtr r)
@@ -189,6 +194,7 @@ struct Divide final : BinaryOp {
   void Get(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
+    if (left->GetResultType()->TypeId())
     left->Get(out, lbuf_name);
     right->Get(out, rbuf_name);
     out << std::format("{} = {} {} {} {}\n",
