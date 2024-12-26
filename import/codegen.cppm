@@ -16,33 +16,24 @@ module;
 #include <string_view>
 #include <vector>
 
-export module ast_builder;
+export module codegen;
 
 import lexem;
-
-template<size_t Sz>
-struct StringLiteral {
-  consteval StringLiteral(char src[Sz]) {
-    std::ranges::copy(src, data);
-  }
-
-  char data[Sz];
-};
 
 std::string GetUniqueId() {
   static size_t cur_ind = 0;
   return std::format("{}uniq", cur_ind++);
 }
 
-struct TypeI {
+export struct TypeI {
   virtual auto TypeId() const -> std::size_t = 0;
   virtual auto Typename() const -> std::string = 0;
   virtual ~TypeI() = default;
 };
 
-using TypePtr = std::unique_ptr<TypeI>;
+export using TypePtr = std::unique_ptr<TypeI>;
 
-struct Void : TypeI {
+export struct Void : TypeI {
   static const TypePtr kPtr;
   static constexpr size_t id = 2;
 
@@ -53,7 +44,7 @@ struct Void : TypeI {
 
 const TypePtr Void::kPtr = std::make_unique<Void>();
 
-struct Integer : TypeI {
+export struct Integer : TypeI {
   static const TypePtr kPtr;
   static constexpr size_t id = 1;
 
@@ -74,7 +65,7 @@ struct Number : TypeI {
 
 const TypePtr Number::kPtr = std::make_unique<Number>();
 
-struct ExpressionI {
+export struct ExpressionI {
   virtual auto GetResultType() const -> const TypePtr& = 0;
   virtual ~ExpressionI() = default;
   virtual void Evaluate(std::ostream&, std::string_view to_reg) const = 0;
@@ -83,9 +74,9 @@ struct ExpressionI {
   std::string break_label;
 };
 
-using ExprPtr = std::unique_ptr<ExpressionI>;
+export using ExprPtr = std::unique_ptr<ExpressionI>;
 
-struct IntegerLiteral : ExpressionI {
+export struct IntegerLiteral : ExpressionI {
   int value;
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
@@ -95,7 +86,7 @@ struct IntegerLiteral : ExpressionI {
   }
 };
 
-struct FloatLiteral : ExpressionI {
+export struct FloatLiteral : ExpressionI {
   float value;
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
@@ -105,7 +96,7 @@ struct FloatLiteral : ExpressionI {
   }
 };
 
-struct VariableDecl final : ExpressionI {
+export struct VariableDecl final : ExpressionI {
   std::string name;
   TypePtr type;
   virtual auto GetResultType() const -> const TypePtr& override { return type; }
@@ -114,7 +105,7 @@ struct VariableDecl final : ExpressionI {
   }
 };
 
-struct VariableUse final : ExpressionI {
+export struct VariableUse final : ExpressionI {
   std::string name;
   TypePtr type;
   virtual auto GetResultType() const -> const TypePtr& override { return type; }
@@ -123,13 +114,13 @@ struct VariableUse final : ExpressionI {
   }
 };
 
-struct BinaryOp : ExpressionI {
+export struct BinaryOp : ExpressionI {
   BinaryOp(ExprPtr l, ExprPtr r) : left(std::move(l)), right(std::move(r)) {}
 
   ExprPtr left, right;
 };
 
-struct Subtract final : BinaryOp {
+export struct Subtract final : BinaryOp {
   using BinaryOp::BinaryOp;
 
   virtual auto GetResultType() const -> const TypePtr& override {
@@ -147,7 +138,7 @@ struct Subtract final : BinaryOp {
   }
 };
 
-struct Add final : BinaryOp {
+export struct Add final : BinaryOp {
   using BinaryOp::BinaryOp;
 
   virtual auto GetResultType() const -> const TypePtr& override {
@@ -165,7 +156,7 @@ struct Add final : BinaryOp {
   }
 };
 
-struct Divide final : BinaryOp {
+export struct Divide final : BinaryOp {
   using BinaryOp::BinaryOp;
 
   virtual auto GetResultType() const -> const TypePtr& override {
@@ -193,7 +184,7 @@ struct Divide final : BinaryOp {
   }
 };
 
-struct DividAndRound final : BinaryOp {
+export struct DividAndRound final : BinaryOp {
   using BinaryOp::BinaryOp;
 
   virtual auto GetResultType() const -> const TypePtr& override {
@@ -216,7 +207,7 @@ struct DividAndRound final : BinaryOp {
   }
 };
 
-struct Multiply final : BinaryOp {
+export struct Multiply final : BinaryOp {
   using BinaryOp::BinaryOp;
 
   virtual auto GetResultType() const -> const TypePtr& override {
@@ -234,7 +225,7 @@ struct Multiply final : BinaryOp {
   }
 };
 
-struct Break : ExpressionI {
+export struct Break : ExpressionI {
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
@@ -242,8 +233,7 @@ struct Break : ExpressionI {
   }
 };
 
-template<StringLiteral CmpType>
-struct Comparison final : BinaryOp {
+export struct Equal final : BinaryOp {
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -254,12 +244,129 @@ struct Comparison final : BinaryOp {
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
     auto res_buf_name = GetUniqueId();
-    std::println(out, "{} = icmp {} {} {}, {}", res_buf_name, CmpType.data, left->GetResultType()->Typename(), left_buf_name, right_buf_name);
+    std::println(out, "{} = {} {} {} {}, {}",
+                 res_buf_name,
+                 (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
+                 (left->GetResultType()->TypeId() == Integer::id ? "eq" : "oeq"),
+                 left->GetResultType()->Typename(),
+                 left_buf_name,
+                 right_buf_name);
     std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
   }
 };
 
-struct ReturnSttmnt : ExpressionI {
+export struct NotEqual final : BinaryOp {
+  auto GetResultType() const -> const TypePtr& override {
+    return Integer::kPtr;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    auto left_buf_name = GetUniqueId();
+    auto right_buf_name = GetUniqueId();
+    left->Evaluate(out, left_buf_name);
+    right->Evaluate(out, right_buf_name);
+    auto res_buf_name = GetUniqueId();
+    std::println(out, "{} = {} {} {} {}, {}",
+                 res_buf_name,
+                 (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
+                 (left->GetResultType()->TypeId() == Integer::id ? "neq" : "one"),
+                 left->GetResultType()->Typename(),
+                 left_buf_name,
+                 right_buf_name);
+    std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
+  }
+};
+
+export struct Greater final : BinaryOp {
+  auto GetResultType() const -> const TypePtr& override {
+    return Integer::kPtr;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    auto left_buf_name = GetUniqueId();
+    auto right_buf_name = GetUniqueId();
+    left->Evaluate(out, left_buf_name);
+    right->Evaluate(out, right_buf_name);
+    auto res_buf_name = GetUniqueId();
+    std::println(out, "{} = {} {} {} {}, {}",
+                 res_buf_name,
+                 (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
+                 (left->GetResultType()->TypeId() == Integer::id ? "sgt" : "ogt"),
+                 left->GetResultType()->Typename(),
+                 left_buf_name,
+                 right_buf_name);
+    std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
+  }
+};
+
+export struct GreaterOrEqual final : BinaryOp {
+  auto GetResultType() const -> const TypePtr& override {
+    return Integer::kPtr;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    auto left_buf_name = GetUniqueId();
+    auto right_buf_name = GetUniqueId();
+    left->Evaluate(out, left_buf_name);
+    right->Evaluate(out, right_buf_name);
+    auto res_buf_name = GetUniqueId();
+    std::println(out, "{} = {} {} {} {}, {}",
+                 res_buf_name,
+                 (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
+                 (left->GetResultType()->TypeId() == Integer::id ? "sge" : "oge"),
+                 left->GetResultType()->Typename(),
+                 left_buf_name,
+                 right_buf_name);
+    std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
+  }
+};
+
+export struct Less final : BinaryOp {
+  auto GetResultType() const -> const TypePtr& override {
+    return Integer::kPtr;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    auto left_buf_name = GetUniqueId();
+    auto right_buf_name = GetUniqueId();
+    left->Evaluate(out, left_buf_name);
+    right->Evaluate(out, right_buf_name);
+    auto res_buf_name = GetUniqueId();
+    std::println(out, "{} = {} {} {} {}, {}",
+                 res_buf_name,
+                 (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
+                 (left->GetResultType()->TypeId() == Integer::id ? "slt" : "olt"),
+                 left->GetResultType()->Typename(),
+                 left_buf_name,
+                 right_buf_name);
+    std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
+  }
+};
+
+export struct LessOrEqual final : BinaryOp {
+  auto GetResultType() const -> const TypePtr& override {
+    return Integer::kPtr;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    auto left_buf_name = GetUniqueId();
+    auto right_buf_name = GetUniqueId();
+    left->Evaluate(out, left_buf_name);
+    right->Evaluate(out, right_buf_name);
+    auto res_buf_name = GetUniqueId();
+    std::println(out, "{} = {} {} {} {}, {}",
+                 res_buf_name,
+                 (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
+                 (left->GetResultType()->TypeId() == Integer::id ? "sle" : "ole"),
+                 left->GetResultType()->Typename(),
+                 left_buf_name,
+                 right_buf_name);
+    std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
+  }
+};
+
+
+export struct ReturnSttmnt : ExpressionI {
   ExprPtr value;
 
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
@@ -271,7 +378,7 @@ struct ReturnSttmnt : ExpressionI {
   }
 };
 
-struct FunctionDecl final : ExpressionI {
+export struct FunctionDecl final : ExpressionI {
   std::string name;
   TypePtr return_type;
   std::vector<ExprPtr> exprs;
@@ -293,9 +400,9 @@ struct FunctionDecl final : ExpressionI {
   }
 };
 
-std::map<std::string, FunctionDecl> func_table;
+export std::map<std::string, FunctionDecl> func_table;
 
-struct FunctionInv final : ExpressionI {
+export struct FunctionInv final : ExpressionI {
   std::vector<ExprPtr> args;
   std::string func_name;
 
@@ -320,7 +427,7 @@ struct FunctionInv final : ExpressionI {
   }
 };
 
-struct Assignment : ExpressionI {
+export struct Assignment : ExpressionI {
   std::string var_name;
   ExprPtr value;
 
@@ -339,7 +446,7 @@ struct Assignment : ExpressionI {
   }
 };
 
-struct Cycle : ExpressionI {
+export struct Cycle : ExpressionI {
   ExprPtr cond;
   std::vector<ExprPtr> body;
 
@@ -368,12 +475,12 @@ struct Cycle : ExpressionI {
   }
 };
 
-enum class IdType { kFuncion, kVariable };
+export enum class IdType { kFuncion, kVariable };
 
 // FIXME idk
-std::map<std::string, std::stack<ExprPtr>> tid;
+export std::map<std::string, std::stack<ExprPtr>> tid;
 
-void Translate(std::ostream& out, std::span<Lexem> lexemes) {
+export void Translate(std::ostream& out, std::span<Lexem> lexemes) {
   for (auto&& i : lexemes) {
     switch (i.GetType()) {
       case Lex::kKeyworkd: {

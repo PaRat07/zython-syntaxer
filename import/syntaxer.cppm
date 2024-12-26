@@ -16,10 +16,9 @@ module;
 
 export module syntaxer;
 
-
 import lexer;
 import lexem;
-
+import codegen;
 import arifm_tree;
 
 import tid;
