@@ -184,6 +184,7 @@ struct Divide final : BinaryOp {
   virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
     return left->GetResultType();
   }
+
   void Get(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
@@ -258,23 +259,20 @@ struct StatementI {
 
 struct ReturnSttmnt : StatementI {
   std::unique_ptr<ExpressionI> value;
-  void Get(std::ostream &out, std::string_view) const override {
+  void Get(std::ostream &out) const override {
     out << "ret " << value->GetResultType()->Typename() << " " << value->Get() << "\n";
-  }
-
-  void Set(std::ostream&, std::string_view) const override {
-    throw std::logic_error("Cant assign to return expression");
   }
 };
 
+
+
 struct FunctionDecl : ExpressionI {
-  std::string name;
   std::unique_ptr<TypeI> return_type;
   std::vector<std::unique_ptr<ExpressionI>> exprs;
   std::vector<std::pair<std::string, std::unique_ptr<TypeI>>> args;
 
-  void Set(std::ostream& out) const override {
-    out << "define dso_local " << return_type->Typename() << " @" << name
+  void Set(std::ostream& out, std::string_view set_to) const override {
+    out << "define dso_local " << return_type->Typename() << " @" << set_to
         << "(";
     for (bool first = true; auto&& [name, type] : args) {
       if (first) {
@@ -294,12 +292,8 @@ struct FunctionDecl : ExpressionI {
   auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
     return return_type;
   }
-
-  auto GetError() const -> std::optional<std::string> override {
-    return std::nullopt;
-  }
-
-  void Get(std::ostream&) const override {
-    return
+  void Get(std::ostream&, std::string_view to_reg) const override {
+    throw std::logic_error("Can't get value from function declaration");
   }
 };
+
