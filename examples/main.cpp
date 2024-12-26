@@ -1,7 +1,8 @@
-import syntaxer;
 #include <iostream>
-// #include <vector>
+
+import syntaxer;
 
 int main() {
   SyntaxValidator validator("huy.txt");
+  std::cout << "All ok" << '\n';
 }

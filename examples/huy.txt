@@ -1,11 +1,1 @@
-def main():
-    a = (12+"sdjhjhs #asdasd")
-    a = 100
-    a = 100.100
-    a = a.b
-    match 52:
-        case:
-            zov
-    while (+a+1,f = c and (d or f)):
-        if (a == 12):
-            break
+a = +a
