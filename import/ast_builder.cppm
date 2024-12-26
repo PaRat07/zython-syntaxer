@@ -20,9 +20,6 @@ export module ast_builder;
 
 import lexem;
 
-template <typename U, typename T>
-static const std::unique_ptr<U> kTypePtr = std::make_unique<T>();
-
 std::string GetUniqueId() {
   static size_t cur_ind = 0;
   return std::format("{}uniq", cur_ind++);
@@ -37,6 +34,7 @@ struct TypeI {
 using TypePtr = std::unique_ptr<TypeI>;
 
 struct Void : TypeI {
+  static const TypePtr kPtr;
   static constexpr size_t id = 2;
 
   virtual auto TypeId() const -> std::size_t override { return id; }
@@ -44,7 +42,10 @@ struct Void : TypeI {
   virtual auto Typename() const -> std::string override { return "void"; }
 };
 
+const TypePtr Void::kPtr = std::make_unique<Void>();
+
 struct Integer : TypeI {
+  static const TypePtr kPtr;
   static constexpr size_t id = 1;
 
   virtual auto TypeId() const -> std::size_t override { return id; }
@@ -52,12 +53,17 @@ struct Integer : TypeI {
   virtual auto Typename() const -> std::string override { return "float"; }
 };
 
+const TypePtr Integer::kPtr = std::make_unique<Integer>();
+
 struct Number : TypeI {
+  static const TypePtr kPtr;
   static constexpr size_t id = 2;
   virtual auto TypeId() const -> std::size_t override { return id; }
 
   virtual auto Typename() const -> std::string override { return "i32"; }
 };
+
+const TypePtr Number::kPtr = std::make_unique<Number>();
 
 struct ExpressionI {
   virtual auto GetResultType() const -> const TypePtr& = 0;
@@ -198,9 +204,7 @@ struct Multiply final : BinaryOp {
 };
 
 struct Break : ExpressionI {
-  static inline const TypePtr res_type = std::make_unique<Void>();
-
-  auto GetResultType() const -> const TypePtr& override { return res_type; }
+  auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
     std::println(out, "br label {}", break_label);
@@ -209,9 +213,8 @@ struct Break : ExpressionI {
 
 struct ReturnSttmnt : ExpressionI {
   ExprPtr value;
-  static inline const TypePtr res_type = std::make_unique<Void>();
 
-  auto GetResultType() const -> const TypePtr& override { return res_type; }
+  auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
     auto ret_buf = GetUniqueId();
@@ -284,11 +287,25 @@ struct Assignment : ExpressionI {
   }
 };
 
-struct Cycle : StatementI {
+struct Cycle : ExpressionI {
   ExprPtr cond;
   std::vector<ExprPtr> body;
 
-  void Evaluate(std::ostream& out) const override {}
+  auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
+
+  void Evaluate(std::ostream& out, std::string_view) const override {
+    auto again_name = GetUniqueId();
+    std::println(out, "{}:", again_name);
+    auto res_name = GetUniqueId();
+    cond->Evaluate(out, res_name);
+    auto cond_name = GetUniqueId();
+    std::println(out, "{} = icmp ne i32 0, {}", cond_name, res_name);
+    auto body_label_name = GetUniqueId();
+    auto break_label_name = GetUniqueId();
+    std::println("br i1 {}, label {}, label {}", cond_name, body_label_name, break_label_name);
+    // out <<
+    auto continue_label_name = GetUniqueId();
+  }
 };
 
 enum class IdType { kFuncion, kVariable };
