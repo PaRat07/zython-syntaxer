@@ -1,23 +1,27 @@
 module;
 
+#include <experimental/iterator>
+#include <algorithm>
+#include <exception>
 #include <format>
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
+#include <print>
+#include <ranges>
 #include <span>
+#include <sstream>
+#include <stack>
 #include <string_view>
 #include <vector>
-#include <stack>
-#include <exception>
-#include <algorithm>
-#include <ostream>
-#include <ranges>
-#include <print>
-#include <experimental/iterator>
 
 export module ast_builder;
 
 import lexem;
+
+template<typename U, typename T>
+static const std::unique_ptr<U> kTypePtr = std::make_unique<T>();
 
 
 std::string GetUniqueId() {
@@ -85,6 +89,8 @@ struct ExpressionI {
   struct {
     uint64_t line, index;
   } pos;
+  std::string continue_label;
+  std::string break_label;
 };
 
 using ExprPtr = std::unique_ptr<ExpressionI>;
@@ -94,8 +100,6 @@ std::ostream &operator<<(std::ostream &out, ExpressionI::Getter expr) {
   return out;
 }
 
-// FIXME idk
-std::map<std::string, std::stack<ExprPtr>> tid;
 
 
 struct Variable : ExpressionI {
@@ -138,10 +142,6 @@ struct Subtract final : BinaryOp {
       lbuf_name,
       rbuf_name);
   }
-
-  void Set(std::ostream&, std::string_view from_reg) const override {
-    throw std::logic_error("Can't assign to rvalue");
-  }
 };
 
 struct Add final : BinaryOp {
@@ -161,10 +161,6 @@ struct Add final : BinaryOp {
       left->GetResultType()->Typename(),
       lbuf_name,
       rbuf_name);
-  }
-
-  void Set(std::ostream&, std::string_view from_reg) const override {
-    throw std::logic_error("Can't assign to rvalue");
   }
 };
 
@@ -197,10 +193,6 @@ struct Divide final : BinaryOp {
       left->GetResultType()->Typename(),
       lbuf_name,
       rbuf_name);
-  }
-
-  void Set(std::ostream&, std::string_view from_reg) const override {
-    throw std::logic_error("Can't assign to rvalue");
   }
 };
 
@@ -252,46 +244,45 @@ struct Multiply final : BinaryOp {
 };
 
 
-struct StatementI {
-  virtual void Get(std::ostream &out) const = 0;
-  virtual ~StatementI() = default;
+struct Break : ExpressionI {
+  static inline const TypePtr res_type = std::make_unique<Void>();
+
+  auto GetResultType() const -> TypePtr const& override {
+    return res_type;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    std::println(out, "br label {}", break_label);
+  }
 };
 
-struct ReturnSttmnt : StatementI {
+struct ReturnSttmnt : ExpressionI {
   ExprPtr value;
-  void Get(std::ostream &out) const override {
+  static inline const TypePtr res_type = std::make_unique<Void>();
+
+  auto GetResultType() const -> TypePtr const& override {
+    return
+  }
+  void Evaluate(std::ostream&, std::string_view to_reg) const override;
+  void Evaluate(std::ostream &out) const override {
     out << "ret " << value->GetResultType()->Typename() << " " << value->Evaluate() << "\n";
   }
 };
 
-struct FunctionDecl final : ExpressionI {
+struct FunctionDecl final : StatementI {
+  std::string name;
   TypePtr return_type;
   std::vector<ExprPtr> exprs;
   std::vector<std::pair<std::string, TypePtr>> args;
 
-  void Set(std::ostream& out, std::string_view set_to) const override {
-    out << "define dso_local " << return_type->Typename() << " @" << set_to
-        << "(";
-    for (bool first = true; auto&& [name, type] : args) {
-      if (first) {
-        first = false;
-      } else {
-        out << ", ";
-      }
-      out << std::format("{} %{}", type->Typename(), name);
-    }
-    out << ") {\n";
-    for (auto&& i : exprs) {
-      out << i->Evaluate() << "\n";
-    }
-    out << "}\n";
-  }
-
-  auto GetResultType() const -> const TypePtr& override {
-    return return_type;
-  }
-  void Evaluate(std::ostream&, std::string_view to_reg) const override {
-    throw std::logic_error("Can't get value from function declaration");
+  void Evaluate(std::ostream &out) const override {
+    std::println(out, "define dso_local {} {}({:n}){{", return_type->Typename(), name, args | std::views::transform([] (auto &&p) {
+      return std::format("{} {}", p.second->Typename(), p.first);
+    }));
+   for (auto&& i : exprs) {
+     out << i->Evaluate() << "\n";
+   }
+   out << "}\n";
   }
 };
 
@@ -302,29 +293,29 @@ struct FunctionInv final : ExpressionI {
   std::string func_name;
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    if (func_table[func_name].GetResultType()->Typename() == "void") {
+    if (func_table[func_name].return_type->Typename() == "void") {
       std::print(out, "call void {}({:n})", func_name, args | std::views::transform([] (const ExprPtr &expr) {
-        return expr->Evaluate();
+        std::ostringstream out;
+        out << expr->Evaluate();
+        return out.str();
       }));
     } else {
-      std::print(out, "{} = {} call void {}({:n})",
+      std::println(out, "{} = {} call void {}({:n})",
         to_reg,
-        func_table[func_name].GetResultType()->Typename(),
+        func_table[func_name].return_type->Typename(),
         func_name,
         args
-          | std::views::transform([] (const ExprPtr &expr) {
-            return expr->Evaluate();
+        | std::views::transform([] (const ExprPtr &expr) {
+            std::ostringstream out;
+            out << expr->Evaluate();
+            return out.str();
           })
       );
     }
   }
 
   auto GetResultType() const -> const TypePtr& override {
-    return func_table[func_name].GetResultType();
-  }
-
-  void Set(std::ostream &out, std::string_view from_reg) const override {
-    throw std::logic_error("Can't assign to rvalue(function invocation)");
+    return func_table[func_name].return_type;
   }
 };
 
@@ -339,7 +330,37 @@ struct Assignment : ExpressionI {
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
     auto buf_name = GetUniqueId();
     value->Evaluate(out, buf_name);
-    std::println(out, "store {} {}, {}* {}", value->GetResultType()->Typename(), buf_name, value->GetResultType(), var_name);
+    std::println(out, "store {} {}, {}* {}", value->GetResultType()->Typename(), buf_name, value->GetResultType()->Typename(), var_name);
     std::println(out, "{} = load {}, {}* %{}", to_reg, value->GetResultType()->Typename(), value->GetResultType()->Typename(), var_name);
   }
 };
+
+struct Cycle : StatementI {
+  ExprPtr cond;
+  std::vector<ExprPtr> body;
+
+  void Evaluate(std::ostream& out) const override {
+
+  }
+};
+
+enum class IdType {
+  kFuncion,
+  kVariable
+};
+
+
+// FIXME idk
+std::map<std::string, std::stack<ExprPtr>> tid;
+
+void Translate(std::ostream &out, std::span<Lexem> lexemes) {
+  for (auto &&i : lexemes) {
+    switch (i.GetType()) {
+      case Lex::kKeyworkd: {
+        if (i.GetData() == "def") {
+
+        }
+      }
+    }
+  }
+}
