@@ -351,5 +351,20 @@ struct FunctionInv final : ExpressionI {
 };
 
 struct Assignment : ExpressionI {
+  std::string var_name;
+  ExprPtr value;
 
+  auto GetResultType() const -> const TypePtr& override {
+    return value->GetResultType();
+  }
+
+  void Get(std::ostream &out, std::string_view to_reg) const override {
+    auto buf_name = GetUniqueId();
+    value->Get(out, buf_name);
+    std::println(out, "store {} {}, {}* {}", value->GetResultType()->Typename(), buf_name, value->GetResultType(), var_name);
+    std::println(out, "{} = load {}, {}* %{}", to_reg, value->GetResultType()->Typename(), value->GetResultType()->Typename(), var_name);
+  }
+  void Set(std::ostream &out, std::string_view from_reg) const override {
+    throw std::logic_error("kys");
+  }
 };
