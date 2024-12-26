@@ -33,9 +33,6 @@ struct TypeI {
 
 using TypePtr = std::unique_ptr<TypeI>;
 
-template<typename U, typename V>
-static const std::unique_ptr<U> kPtrToType = std::make_unique<V>();
-
 struct Void : TypeI {
   static constexpr size_t id = 2;
 
@@ -82,7 +79,7 @@ struct ExpressionI {
     std::string_view load_from;
   };
 
-  virtual auto GetResultType() const -> const std::unique_ptr<TypeI>& = 0;
+  virtual auto GetResultType() const -> const TypePtr& = 0;
   virtual ~ExpressionI() = default;
   virtual void Get(std::ostream&, std::string_view to_reg) const = 0;
   virtual void Set(std::ostream&, std::string_view from_reg) const = 0;
@@ -112,13 +109,13 @@ std::ostream &operator<<(std::ostream &out, ExpressionI::Setter expr) {
 }
 
 // FIXME idk
-std::map<std::string, std::stack<std::unique_ptr<ExpressionI>>> tid;
+std::map<std::string, std::stack<ExprPtr>> tid;
 
 
 struct Variable : ExpressionI {
   std::string name;
-  std::unique_ptr<TypeI> type;
-  virtual auto GetResultType() const -> const std::unique_ptr<TypeI>& override {
+  TypePtr type;
+  virtual auto GetResultType() const -> const TypePtr& override {
     return type;
   }
 };
@@ -139,7 +136,7 @@ struct BinaryOp : ExpressionI {
 struct Subtract final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
 
@@ -164,7 +161,7 @@ struct Subtract final : BinaryOp {
 struct Add final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
   void Get(std::ostream &out, std::string_view to_reg) const override {
@@ -188,7 +185,7 @@ struct Add final : BinaryOp {
 struct Divide final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
 
@@ -224,7 +221,7 @@ struct Divide final : BinaryOp {
 struct DividAndRound final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
 
@@ -255,7 +252,7 @@ struct DividAndRound final : BinaryOp {
 struct Multiply final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
   void Get(std::ostream &out, std::string_view to_reg) const override {
@@ -283,16 +280,16 @@ struct StatementI {
 };
 
 struct ReturnSttmnt : StatementI {
-  std::unique_ptr<ExpressionI> value;
+  ExprPtr value;
   void Get(std::ostream &out) const override {
     out << "ret " << value->GetResultType()->Typename() << " " << value->Get() << "\n";
   }
 };
 
 struct FunctionDecl final : ExpressionI {
-  std::unique_ptr<TypeI> return_type;
-  std::vector<std::unique_ptr<ExpressionI>> exprs;
-  std::vector<std::pair<std::string, std::unique_ptr<TypeI>>> args;
+  TypePtr return_type;
+  std::vector<ExprPtr> exprs;
+  std::vector<std::pair<std::string, TypePtr>> args;
 
   void Set(std::ostream& out, std::string_view set_to) const override {
     out << "define dso_local " << return_type->Typename() << " @" << set_to
@@ -312,7 +309,7 @@ struct FunctionDecl final : ExpressionI {
     out << "}\n";
   }
 
-  auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  auto GetResultType() const -> const TypePtr& override {
     return return_type;
   }
   void Get(std::ostream&, std::string_view to_reg) const override {
@@ -344,11 +341,15 @@ struct FunctionInv final : ExpressionI {
     }
   }
 
-  auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+  auto GetResultType() const -> const TypePtr& override {
     return func_table[func_name].GetResultType();
   }
 
   void Set(std::ostream &out, std::string_view from_reg) const override {
     throw std::logic_error("Can't assign to rvalue(function invocation)");
   }
+};
+
+struct Assignment : ExpressionI {
+
 };
