@@ -20,6 +20,15 @@ export module ast_builder;
 
 import lexem;
 
+template<size_t Sz>
+struct StringLiteral {
+  consteval StringLiteral(char src[Sz]) {
+    std::ranges::copy(src, data);
+  }
+
+  char data[Sz];
+};
+
 std::string GetUniqueId() {
   static size_t cur_ind = 0;
   return std::format("{}uniq", cur_ind++);
@@ -233,6 +242,23 @@ struct Break : ExpressionI {
   }
 };
 
+template<StringLiteral CmpType>
+struct Comparison final : BinaryOp {
+  auto GetResultType() const -> const TypePtr& override {
+    return Integer::kPtr;
+  }
+
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    auto left_buf_name = GetUniqueId();
+    auto right_buf_name = GetUniqueId();
+    left->Evaluate(out, left_buf_name);
+    right->Evaluate(out, right_buf_name);
+    auto res_buf_name = GetUniqueId();
+    std::println(out, "{} = icmp {} {} {}, {}", res_buf_name, CmpType.data, left->GetResultType()->Typename(), left_buf_name, right_buf_name);
+    std::println(out, "{} = sext i1 {} to i32", to_reg, res_buf_name);
+  }
+};
+
 struct ReturnSttmnt : ExpressionI {
   ExprPtr value;
 
@@ -262,6 +288,9 @@ struct FunctionDecl final : ExpressionI {
     }
     out << "}\n";
   }
+  auto GetResultType() const -> const TypePtr& override {
+    return Void::kPtr;
+  }
 };
 
 std::map<std::string, FunctionDecl> func_table;
@@ -271,18 +300,19 @@ struct FunctionInv final : ExpressionI {
   std::string func_name;
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
+    std::vector<std::string> reg_names(args.size());
+    for (auto &i : reg_names) {
+      i = GetUniqueId();
+    }
+    for (const auto &[reg, expr] : std::views::zip(reg_names, args)) {
+      expr->Evaluate(out, reg);
+    }
     if (func_table[func_name].return_type->Typename() == "void") {
-      std::print(out, "call void {}(", func_name);
+      std::println(out, "call void {}({:n})", func_name, reg_names);
     } else {
-      std::println(out, "{} = call {} {}(", to_reg,
-                   func_table[func_name].return_type->Typename(), func_name);
+      std::println(out, "{} = call {} {}({:n})", to_reg,
+                   func_table[func_name].return_type->Typename(), func_name, reg_names);
     }
-    for (bool first = true; auto&& i : args) {
-      out << (first ? "" : ", ");
-      first = false;
-      i->Evaluate(out, GetUniqueId());
-    }
-    std::println(out, ")");
   }
 
   auto GetResultType() const -> const TypePtr& override {
