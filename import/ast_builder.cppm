@@ -229,21 +229,21 @@ struct DividAndRound final : BinaryOp {
   }
 
   void Get(std::ostream &out, std::string_view to_reg) const override {
+    auto lbuf_name = GetUniqueId();
+    auto rbuf_name = GetUniqueId();
+    left->Get(out, lbuf_name);
+    right->Get(out, rbuf_name);
     if (left->GetResultType()->TypeId() == Integer::id) {
-
+      std::println(out, "{} = sdiv i32 {}, {}", to_reg, lbuf_name, rbuf_name);
     } else {
-      auto lbuf_name = GetUniqueId();
-      auto rbuf_name = GetUniqueId();
-      left->Get(out, lbuf_name);
-      right->Get(out, rbuf_name);
       auto ansbuf_name = GetUniqueId();
-
-      out << std::format("{} = {} {} {} {}\n",
+      std::println(out, "{} = {} {} {} {}",
         to_reg,
         "fdiv",
         left->GetResultType()->Typename(),
         lbuf_name,
         rbuf_name);
+      std::print(out, "{} = fptosi float {} to i32", to_reg, ansbuf_name);
     }
   }
 
