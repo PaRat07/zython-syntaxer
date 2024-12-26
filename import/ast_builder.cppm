@@ -142,6 +142,7 @@ struct Subtract final : BinaryOp {
   virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
     return left->GetResultType();
   }
+
   void Get(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
@@ -149,7 +150,7 @@ struct Subtract final : BinaryOp {
     right->Get(out, rbuf_name);
     out << std::format("{} = {} {} {} {}\n",
       to_reg,
-      (left->GetResultType()->Typename() == "i32" ? "add" : "fadd"),
+      (left->GetResultType()->Typename() == "i32" ? "sub" : "fsub"),
       left->GetResultType()->Typename(),
       lbuf_name,
       rbuf_name);
@@ -173,7 +174,7 @@ struct Add final : BinaryOp {
     right->Get(out, rbuf_name);
     out << std::format("{} = {} {} {} {}\n",
       to_reg,
-      (left->GetResultType()->Typename() == "i32" ? "sub" : "fsub"),
+      (left->GetResultType()->Typename() == "i32" ? "add" : "fsub"),
       left->GetResultType()->Typename(),
       lbuf_name,
       rbuf_name);
@@ -194,12 +195,22 @@ struct Divide final : BinaryOp {
   void Get(std::ostream &out, std::string_view to_reg) const override {
     auto lbuf_name = GetUniqueId();
     auto rbuf_name = GetUniqueId();
-    if (left->GetResultType()->TypeId())
-    left->Get(out, lbuf_name);
-    right->Get(out, rbuf_name);
-    out << std::format("{} = {} {} {} {}\n",
+    if (left->GetResultType()->TypeId() == Number::id) {
+      left->Get(out, lbuf_name);
+      right->Get(out, rbuf_name);
+    } else {
+      auto intlbuf_name = GetUniqueId();
+      auto intrbuf_name = GetUniqueId();
+
+      left->Get(out, intlbuf_name);
+      right->Get(out, intrbuf_name);
+
+      std::println(out, "{} = sitofp i32 {} to float", lbuf_name, intlbuf_name);
+      std::println(out, "{} = sitofp i32 {} to float", lbuf_name, intlbuf_name);
+    }
+    std::print(out, "{} = {} {} {} {}\n",
       to_reg,
-      (left->GetResultType()->Typename() == "i32" ? "sub" : "fsub"),
+      "fsub",
       left->GetResultType()->Typename(),
       lbuf_name,
       rbuf_name);
@@ -216,17 +227,24 @@ struct DividAndRound final : BinaryOp {
   virtual auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
     return left->GetResultType();
   }
+
   void Get(std::ostream &out, std::string_view to_reg) const override {
-    auto lbuf_name = GetUniqueId();
-    auto rbuf_name = GetUniqueId();
-    left->Get(out, lbuf_name);
-    right->Get(out, rbuf_name);
-    out << std::format("{} = {} {} {} {}\n",
-      to_reg,
-      (left->GetResultType()->Typename() == "i32" ? "sdiv" : "fdiv"),
-      left->GetResultType()->Typename(),
-      lbuf_name,
-      rbuf_name);
+    if (left->GetResultType()->TypeId() == Integer::id) {
+
+    } else {
+      auto lbuf_name = GetUniqueId();
+      auto rbuf_name = GetUniqueId();
+      left->Get(out, lbuf_name);
+      right->Get(out, rbuf_name);
+      auto ansbuf_name = GetUniqueId();
+
+      out << std::format("{} = {} {} {} {}\n",
+        to_reg,
+        "fdiv",
+        left->GetResultType()->Typename(),
+        lbuf_name,
+        rbuf_name);
+    }
   }
 
   void Set(std::ostream&, std::string_view from_reg) const override {
