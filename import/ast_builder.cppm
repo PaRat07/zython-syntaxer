@@ -21,7 +21,7 @@ export module ast_builder;
 import lexem;
 
 template <typename U, typename T>
-static std::unique_ptr<U> const kTypePtr = std::make_unique<T>();
+static const std::unique_ptr<U> kTypePtr = std::make_unique<T>();
 
 std::string GetUniqueId() {
   static size_t cur_ind = 0;
@@ -60,7 +60,7 @@ struct Number : TypeI {
 };
 
 struct ExpressionI {
-  virtual auto GetResultType() const -> TypePtr const& = 0;
+  virtual auto GetResultType() const -> const TypePtr& = 0;
   virtual ~ExpressionI() = default;
   virtual void Evaluate(std::ostream&, std::string_view to_reg) const = 0;
 
@@ -76,7 +76,7 @@ using ExprPtr = std::unique_ptr<ExpressionI>;
 struct Variable : ExpressionI {
   std::string name;
   TypePtr type;
-  virtual auto GetResultType() const -> TypePtr const& override { return type; }
+  virtual auto GetResultType() const -> const TypePtr& override { return type; }
 };
 
 struct BinaryOp : ExpressionI {
@@ -94,7 +94,7 @@ struct BinaryOp : ExpressionI {
 struct Subtract final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> TypePtr const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
 
@@ -113,7 +113,7 @@ struct Subtract final : BinaryOp {
 struct Add final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> TypePtr const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
@@ -131,7 +131,7 @@ struct Add final : BinaryOp {
 struct Divide final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> TypePtr const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
 
@@ -159,7 +159,7 @@ struct Divide final : BinaryOp {
 struct DividAndRound final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> TypePtr const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
 
@@ -182,7 +182,7 @@ struct DividAndRound final : BinaryOp {
 struct Multiply final : BinaryOp {
   using BinaryOp::BinaryOp;
 
-  virtual auto GetResultType() const -> TypePtr const& override {
+  virtual auto GetResultType() const -> const TypePtr& override {
     return left->GetResultType();
   }
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
@@ -198,9 +198,9 @@ struct Multiply final : BinaryOp {
 };
 
 struct Break : ExpressionI {
-  static inline TypePtr const res_type = std::make_unique<Void>();
+  static inline const TypePtr res_type = std::make_unique<Void>();
 
-  auto GetResultType() const -> TypePtr const& override { return res_type; }
+  auto GetResultType() const -> const TypePtr& override { return res_type; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
     std::println(out, "br label {}", break_label);
@@ -209,9 +209,9 @@ struct Break : ExpressionI {
 
 struct ReturnSttmnt : ExpressionI {
   ExprPtr value;
-  static inline TypePtr const res_type = std::make_unique<Void>();
+  static inline const TypePtr res_type = std::make_unique<Void>();
 
-  auto GetResultType() const -> TypePtr const& override { return res_type; }
+  auto GetResultType() const -> const TypePtr& override { return res_type; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
     auto ret_buf = GetUniqueId();
@@ -260,7 +260,7 @@ struct FunctionInv final : ExpressionI {
     std::println(out, ")");
   }
 
-  auto GetResultType() const -> TypePtr const& override {
+  auto GetResultType() const -> const TypePtr& override {
     return func_table[func_name].return_type;
   }
 };
@@ -269,7 +269,7 @@ struct Assignment : ExpressionI {
   std::string var_name;
   ExprPtr value;
 
-  auto GetResultType() const -> TypePtr const& override {
+  auto GetResultType() const -> const TypePtr& override {
     return value->GetResultType();
   }
 
