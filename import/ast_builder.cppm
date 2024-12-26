@@ -10,6 +10,7 @@ module;
 #include <stack>
 #include <exception>
 #include <algorithm>
+#include <ostream>
 #include <ranges>
 #include <print>
 #include <experimental/iterator>
@@ -264,9 +265,7 @@ struct ReturnSttmnt : StatementI {
   }
 };
 
-
-
-struct FunctionDecl : ExpressionI {
+struct FunctionDecl final : ExpressionI {
   std::unique_ptr<TypeI> return_type;
   std::vector<std::unique_ptr<ExpressionI>> exprs;
   std::vector<std::pair<std::string, std::unique_ptr<TypeI>>> args;
@@ -297,3 +296,35 @@ struct FunctionDecl : ExpressionI {
   }
 };
 
+std::map<std::string, FunctionDecl> func_table;
+
+struct FunctionInv final : ExpressionI {
+  std::vector<ExprPtr> args;
+  std::string func_name;
+
+  void Get(std::ostream &out, std::string_view to_reg) const override {
+    if (func_table[func_name].GetResultType()->Typename() == "void") {
+      std::print(out, "call void {}({:n})", func_name, args | std::views::transform([] (const ExprPtr &expr) {
+        return expr->Get();
+      }));
+    } else {
+      std::print(out, "{} = {} call void {}({:n})",
+        to_reg,
+        func_table[func_name].GetResultType()->Typename(),
+        func_name,
+        args
+          | std::views::transform([] (const ExprPtr &expr) {
+            return expr->Get();
+          })
+      );
+    }
+  }
+
+  auto GetResultType() const -> std::unique_ptr<TypeI> const& override {
+    return func_table[func_name].GetResultType();
+  }
+
+  void Set(std::ostream &out, std::string_view from_reg) const override {
+    throw std::logic_error("Can't assign to rvalue(function invocation)");
+  }
+};
