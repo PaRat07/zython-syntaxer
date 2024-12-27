@@ -22,12 +22,12 @@ import lexem;
 
 std::string GetUniqueRegister() {
   static size_t cur_ind = 0;
-  return std::format("%{}reg", cur_ind++);
+  return std::format("%id{}reg", cur_ind++);
 }
 
 std::string GetUniqueLabel() {
   static size_t cur_ind = 0;
-  return std::format("{}lbl", cur_ind++);
+  return std::format("id{}lbl", cur_ind++);
 }
 
 export struct TypeI {
