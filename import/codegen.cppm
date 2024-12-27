@@ -4,6 +4,7 @@ module;
 #include <algorithm>
 #include <exception>
 #include <format>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -473,12 +474,12 @@ export struct FunctionDecl final : ContainsTheProgram {
   }
 };
 
-export std::map<std::string, FunctionDecl> func_table;
 
 export struct FunctionInv final : ExpressionI {
-  FunctionInv(std::vector<ExprPtr> args, std::string func_name)
-      : args(std::move(args)), func_name(std::move(func_name)) {}
+  FunctionInv(std::vector<ExprPtr> args, const FunctionDecl *decl, std::string func_name)
+      : args(std::move(args)), decl_ptr(decl), func_name(std::move(func_name)) {}
   std::vector<ExprPtr> args;
+  const FunctionDecl *decl_ptr;
   std::string func_name;
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
@@ -489,16 +490,16 @@ export struct FunctionInv final : ExpressionI {
     for (const auto &[reg, expr] : std::views::zip(reg_names, args)) {
       expr->Evaluate(out, reg);
     }
-    if (func_table[func_name].return_type->Typename() == "void") {
+    if (decl_ptr->return_type->Typename() == "void") {
       std::println(out, "call void {}({:n})", func_name, reg_names);
     } else {
       std::println(out, "{} = call {} {}({:n})", to_reg,
-                   func_table[func_name].return_type->Typename(), func_name, reg_names);
+                   decl_ptr->return_type->Typename(), func_name, reg_names);
     }
   }
 
   auto GetResultType() const -> const TypePtr& override {
-    return func_table[func_name].return_type;
+    return decl_ptr->return_type;
   }
 };
 
@@ -549,6 +550,23 @@ export struct Cycle : ContainsTheProgram {
     std::println(out, "{}:", continue_label_name);
     std::println(out, "br label {}", again_name);
     std::println(out, "{}:", break_label_name);
+  }
+};
+
+export struct IntrisicsDecl : ExpressionI {
+  auto GetResultType() const -> const TypePtr& override {
+    return Void::kPtr;
+  }
+  void Evaluate(std::ostream &out, std::string_view to_reg) const override {
+    static const std::string intrisics_path = "../../dst/intrisics.ll";
+    std::string buf;
+    {
+      std::ifstream fin(intrisics_path);
+      std::ostringstream buffer;
+      buffer << fin.rdbuf();
+      buf = buffer.str();
+    }
+    std::println(out, "{}", buf);
   }
 };
 
