@@ -55,7 +55,7 @@ export struct Integer : TypeI {
 
 const TypePtr Integer::kPtr = std::make_unique<Integer>();
 
-struct Number : TypeI {
+export struct Number : TypeI {
   static const TypePtr kPtr;
   static constexpr size_t id = 2;
   virtual auto TypeId() const -> std::size_t override { return id; }
@@ -77,6 +77,7 @@ export struct ExpressionI {
 export using ExprPtr = std::unique_ptr<ExpressionI>;
 
 export struct IntegerLiteral : ExpressionI {
+  explicit IntegerLiteral(int value) : value(value) {}
   int value;
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
@@ -87,6 +88,7 @@ export struct IntegerLiteral : ExpressionI {
 };
 
 export struct FloatLiteral : ExpressionI {
+  explicit FloatLiteral(float value) : value(value) {}
   float value;
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
@@ -97,6 +99,8 @@ export struct FloatLiteral : ExpressionI {
 };
 
 export struct VariableDecl final : ExpressionI {
+  VariableDecl(std::string name, TypePtr type)
+      : name(std::move(name)), type(std::move(type)) {}
   std::string name;
   TypePtr type;
   virtual auto GetResultType() const -> const TypePtr& override { return type; }
@@ -106,6 +110,8 @@ export struct VariableDecl final : ExpressionI {
 };
 
 export struct VariableUse final : ExpressionI {
+  VariableUse(std::string name, TypePtr type)
+      : name(std::move(name)), type(std::move(type)) {}
   std::string name;
   TypePtr type;
   virtual auto GetResultType() const -> const TypePtr& override { return type; }
@@ -234,6 +240,8 @@ export struct Break : ExpressionI {
 };
 
 export struct Equal final : BinaryOp {
+  using BinaryOp::BinaryOp;
+
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -256,6 +264,8 @@ export struct Equal final : BinaryOp {
 };
 
 export struct NotEqual final : BinaryOp {
+  using BinaryOp::BinaryOp;
+
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -278,6 +288,7 @@ export struct NotEqual final : BinaryOp {
 };
 
 export struct Greater final : BinaryOp {
+  using BinaryOp::BinaryOp;
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -300,6 +311,8 @@ export struct Greater final : BinaryOp {
 };
 
 export struct GreaterOrEqual final : BinaryOp {
+  using BinaryOp::BinaryOp;
+
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -322,6 +335,8 @@ export struct GreaterOrEqual final : BinaryOp {
 };
 
 export struct Less final : BinaryOp {
+  using BinaryOp::BinaryOp;
+
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -344,6 +359,8 @@ export struct Less final : BinaryOp {
 };
 
 export struct LessOrEqual final : BinaryOp {
+  using BinaryOp::BinaryOp;
+
   auto GetResultType() const -> const TypePtr& override {
     return Integer::kPtr;
   }
@@ -367,6 +384,7 @@ export struct LessOrEqual final : BinaryOp {
 
 
 export struct ReturnSttmnt : ExpressionI {
+  explicit ReturnSttmnt(ExprPtr value) : value(std::move(value)) {}
   ExprPtr value;
 
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
@@ -379,6 +397,13 @@ export struct ReturnSttmnt : ExpressionI {
 };
 
 export struct FunctionDecl final : ExpressionI {
+  FunctionDecl(std::string name, TypePtr return_type,
+               std::vector<ExprPtr> exprs,
+               std::vector<std::pair<std::string, TypePtr>> args)
+      : name(std::move(name)),
+        return_type(std::move(return_type)),
+        exprs(std::move(exprs)),
+        args(std::move(args)) {}
   std::string name;
   TypePtr return_type;
   std::vector<ExprPtr> exprs;
@@ -403,6 +428,8 @@ export struct FunctionDecl final : ExpressionI {
 export std::map<std::string, FunctionDecl> func_table;
 
 export struct FunctionInv final : ExpressionI {
+  FunctionInv(std::vector<ExprPtr> args, std::string func_name)
+      : args(std::move(args)), func_name(std::move(func_name)) {}
   std::vector<ExprPtr> args;
   std::string func_name;
 
@@ -428,6 +455,8 @@ export struct FunctionInv final : ExpressionI {
 };
 
 export struct Assignment : ExpressionI {
+  Assignment(std::string var_name, ExprPtr value)
+      : var_name(std::move(var_name)), value(std::move(value)) {}
   std::string var_name;
   ExprPtr value;
 
@@ -447,6 +476,10 @@ export struct Assignment : ExpressionI {
 };
 
 export struct Cycle : ExpressionI {
+  Cycle(ExprPtr cond_val, std::vector<ExprPtr> body_val)
+    : cond(std::move(cond_val)),
+      body(std::move(body_val)) {}
+
   ExprPtr cond;
   std::vector<ExprPtr> body;
 
@@ -479,14 +512,3 @@ export enum class IdType { kFuncion, kVariable };
 
 // FIXME idk
 export std::map<std::string, std::stack<ExprPtr>> tid;
-
-export void Translate(std::ostream& out, std::span<Lexem> lexemes) {
-  for (auto&& i : lexemes) {
-    switch (i.GetType()) {
-      case Lex::kKeyworkd: {
-        if (i.GetData() == "def") {
-        }
-      }
-    }
-  }
-}
