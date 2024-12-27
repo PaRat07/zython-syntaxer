@@ -76,7 +76,7 @@ export class ArifmTree {
 
       virtual const ExprPtr convert() const {
         if (lexem.GetType() == Lex::kId) {
-          return std::make_unique<VariableUse>(lexem.GetData(), getType(VarToLex(type.type)));
+          return std::make_unique<VariableUse>("%" + lexem.GetData(), getType(VarToLex(type.type)));
         }
         if (lexem.GetType() == Lex::kIntLiter) {
           return std::make_unique<IntegerLiteral>(std::stoi(lexem.GetData()));
@@ -223,6 +223,18 @@ export class ArifmTree {
       }
       if (root->lexem.GetData() == "/") {
         return std::make_unique<Divide>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == "<") {
+        return std::make_unique<Less>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == ">") {
+        return std::make_unique<Greater>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == "==") {
+        return std::make_unique<Equal>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == ">") {
+        return std::make_unique<Greater>(move(left), move(right));
       }
     }
 };

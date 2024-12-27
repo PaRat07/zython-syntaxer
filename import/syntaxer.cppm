@@ -205,7 +205,7 @@ export class SyntaxValidator {
             if (type != *prev_id && prev_id->type != variable_type::Undefined) {
               throw std::invalid_argument(std::format("type mismatch, at {}", lexes_.at(0).GetPosition()));
             }
-            Assignment(prev_id->name, std::move(root)).Evaluate(std::cout, "");
+            Assignment("%" + prev_id->name, std::move(root)).Evaluate(std::cout, "");
             prev_id->type = type.type;
             prev_id->in_array_type = type.in_array_type;
             prev_id->array_dimensions = type.array_dimensions;
