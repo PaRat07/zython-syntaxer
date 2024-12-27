@@ -55,7 +55,7 @@ export struct Integer : TypeI {
 
 const TypePtr Integer::kPtr = std::make_unique<Integer>();
 
-struct Number : TypeI {
+export struct Number : TypeI {
   static const TypePtr kPtr;
   static constexpr size_t id = 2;
   virtual auto TypeId() const -> std::size_t override { return id; }

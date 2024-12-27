@@ -18,7 +18,6 @@ export module syntaxer;
 
 import lexer;
 import lexem;
-import codegen;
 import arifm_tree;
 
 import tid;
@@ -190,7 +189,8 @@ export class SyntaxValidator {
                 lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
             is_func = true;
-            SkipParams();
+            ArifmTree tree;
+            SkipParams(tree);
             SkipLexem(lexes_.at(0).GetType(), ")");
           }
         }
@@ -438,10 +438,9 @@ export class SyntaxValidator {
                                            lexes_.at(0).GetData(), lexes_.at(0).GetPosition()));
             }
 
-            tree.Insert(lexes_.at(0), func->return_value);
             is_insert = true;
 
-            SkipParams();
+            SkipParams(tree);
           }
         } else {
           tree.Insert(lexes_.at(0), Tid::Variable_Node("", GetType(lexes_.at(0))));
@@ -465,7 +464,7 @@ export class SyntaxValidator {
     return tree.check();
   }
 
-  void SkipParams() {
+  void SkipParams(ArifmTree& tree) {
     auto func = tid.FindFunction(lexes_.at(0).GetData());
     SkipLexem(lexes_.at(0).GetType());
     SkipLexem(lexes_.at(0).GetType(), "(");
@@ -493,6 +492,7 @@ export class SyntaxValidator {
       throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
           std::to_string(func->parameters.size()), ind, lexes_.at(0).GetPosition()));
     }
+    tree.Insert(lexes_.at(0), func->return_value);
   }
 
   void IfElse() {
