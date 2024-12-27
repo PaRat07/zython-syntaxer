@@ -41,6 +41,9 @@ export class ArifmTree {
     }
 
   private:
+
+    std::vector<ExprPtr> codegen_mas;
+
     static TypePtr getType(Lexem lex) {
       if (lex.GetType() == Lex::kIntLiter) {
         return std::move(std::make_unique<Integer>());
@@ -69,13 +72,13 @@ export class ArifmTree {
 
       virtual const ExprPtr& convert() const {
         if (lexem.GetType() == Lex::kId) {
-
+          return std::make_unique<VariableUse>(lexem.GetData(), getType(VarToLex(type.type)));
         }
         if (lexem.GetType() == Lex::kIntLiter) {
-
+          return std::make_unique<IntegerLiteral>(std::stoi(lexem.GetData()));
         }
         if (lexem.GetType() == Lex::kFloatLiter) {
-
+          return std::make_unique<FloatLiteral>(std::stof(lexem.GetData()));
         }
       }
 
@@ -204,4 +207,14 @@ export class ArifmTree {
         }
         return f_type;
     }
+    // const ExprPtr& BuildAstTree(Node* root) {
+    //   if (GetPriority(root->lexem) == 0) {
+    //     return root->convert();
+    //   }
+    //   //auto left = BuildAstTree(root->left.get());
+    //   //auto right = BuildAstTree(root->right.get());
+    //   if (root->lexem.GetData() == "+") {
+    //     //return std::make_unique<Add>(left, right);
+    //   }
+    // }
 };
