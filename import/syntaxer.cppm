@@ -20,6 +20,8 @@ import lexer;
 import lexem;
 import arifm_tree;
 
+import codegen;
+
 import tid;
 
 
@@ -157,7 +159,7 @@ export class SyntaxValidator {
             throw std::invalid_argument(std::format("SyntaxError: return out of func at {}", lexes_.at(0).GetPosition()));
           }
           SkipLexem(Lex::kKeyworkd, "return");
-          auto func_type = Expression();
+          auto func_type = Expression().first;
           if (func_type.type != tec_func.back()->return_value.type && tec_func.back()->return_value.type != variable_type::Undefined) {
             throw std::invalid_argument(std::format("type mismatch: cannot be combined return values {} and {}, at {}",
               Tid::ToValueString(func_type.type), Tid::ToValueString(tec_func.back()->return_value.type), lexes_.at(0).GetPosition()));
@@ -195,7 +197,7 @@ export class SyntaxValidator {
           }
         }
         if (!is_func) {
-          auto type = Expression();
+          auto [type, root] = Expression();
           if (prev_id != nullptr) {
             if (type.type == variable_type::Undefined) {
               throw std::invalid_argument("type mismatch: Undefined Expression");
@@ -203,6 +205,7 @@ export class SyntaxValidator {
             if (type != *prev_id && prev_id->type != variable_type::Undefined) {
               throw std::invalid_argument(std::format("type mismatch, at {}", lexes_.at(0).GetPosition()));
             }
+            Assignment(prev_id->name, std::move(root)).Evaluate(std::cout, "");
             prev_id->type = type.type;
             prev_id->in_array_type = type.in_array_type;
             prev_id->array_dimensions = type.array_dimensions;
@@ -216,7 +219,7 @@ export class SyntaxValidator {
 
   void MatchCase() {
     SkipLexem(Lex::kKeyworkd, "match");
-    auto type = Expression();
+    auto type = Expression().first;
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();
@@ -226,7 +229,7 @@ export class SyntaxValidator {
         throw std::invalid_argument(std::format("Expected case at {}, got \"{}\"", lexes_[0].GetPosition(), lexes_.at(0).GetData()));
       }
       SkipLexem(Lex::kKeyworkd, "case");
-      auto case_type = Expression();
+      auto case_type = Expression().first;
       if (case_type != type) {
         throw std::invalid_argument(std::format("Expected type {}, got {} at {}",
           Tid::ToValueString(case_type.type), Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
@@ -292,7 +295,7 @@ export class SyntaxValidator {
         }
 
       } else {
-        auto type = Expression(true);
+        auto type = Expression(true).first;
         if (node.in_array_type == variable_type::Undefined) {
           if (type.type == variable_type::Array) {
             node.in_array_type = type.in_array_type;
@@ -312,7 +315,7 @@ export class SyntaxValidator {
     return node;
   }
 
-  Tid::Variable_Node Expression(bool in_func = false) {
+  std::pair<Tid::Variable_Node, ExprPtr> Expression(bool in_func = false) {
     ArifmTree tree;
     int cur_brace_balance = in_func;
     bool prev_operator = true;
@@ -359,7 +362,7 @@ export class SyntaxValidator {
               auto type = tree.GetLats();
               while (lexes_.at(0).GetData() == "[") {
                 SkipLexem(lexes_.at(0).GetType(), "[");
-                auto tp = Expression(true);
+                auto tp = Expression(true).first;
                 if (tp.type != variable_type::Integer) {
                   throw std::invalid_argument(std::format("Not integer index at", lexes_.at(0).GetPosition()));
                 }
@@ -416,7 +419,7 @@ export class SyntaxValidator {
 
           SkipLexem(Lex::kId, lexes_.at(0).GetData());
           SkipLexem(Lex::kOperator, "(");
-          auto from_cast_type = Expression(true);
+          auto from_cast_type = Expression(true).first;
           if (!CheckTypeCast(from_cast_type.type, to_cast_type)) {
             throw std::invalid_argument(std::format("type mismatch: cannot cast from {} to {}, at {}",
               Tid::ToValueString(from_cast_type.type), Tid::ToValueString(to_cast_type), lexes_.at(0).GetPosition()));
@@ -461,7 +464,7 @@ export class SyntaxValidator {
       throw std::invalid_argument(std::format("SyntaxError: need extra brace at {}", lexes_.at(0).GetPosition()));
     }
     tree.build();
-    return tree.check();
+    return std::pair(tree.check(), tree.BuildAst());
   }
 
   void SkipParams(ArifmTree& tree) {
@@ -474,7 +477,7 @@ export class SyntaxValidator {
       if (lexes_.at(0).GetType() == Lex::kOperator && lexes_.at(0).GetData() != "[") {
         break;
       }
-      auto type = Expression(true);
+      auto type = Expression(true).first;
       if (ind >= func->parameters.size()) {
         throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
           std::to_string(func->parameters.size()), ind + 1, lexes_.at(0).GetPosition()));
@@ -497,7 +500,7 @@ export class SyntaxValidator {
 
   void IfElse() {
     SkipLexem(Lex::kKeyworkd, "if");
-    auto type = Expression();
+    auto type = Expression().first;
     if (type.type != variable_type::Integer) {
       throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
@@ -566,7 +569,7 @@ export class SyntaxValidator {
 
   void While() {
     SkipLexem(Lex::kKeyworkd, "while");
-    auto type = Expression();
+    auto type = Expression().first;
     if (type.type != variable_type::Integer) {
       throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));

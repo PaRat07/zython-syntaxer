@@ -471,9 +471,6 @@ export struct Assignment : ExpressionI {
     value->Evaluate(out, buf_name);
     std::println(out, "store {} {}, {}* {}", value->GetResultType()->Typename(),
                  buf_name, value->GetResultType()->Typename(), var_name);
-    std::println(out, "{} = load {}, {}* {}", to_reg,
-                 value->GetResultType()->Typename(),
-                 value->GetResultType()->Typename(), var_name);
   }
 };
 

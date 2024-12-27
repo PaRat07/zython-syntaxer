@@ -40,6 +40,10 @@ export class ArifmTree {
         return u;
     }
 
+    ExprPtr BuildAst() {
+      return BuildAstTree(root.get());
+    }
+
   private:
 
     std::vector<ExprPtr> codegen_mas;
@@ -70,7 +74,7 @@ export class ArifmTree {
       Node(Node&&) noexcept = default;
       Node& operator=(Node&&) noexcept = default;
 
-      virtual const ExprPtr& convert() const {
+      virtual const ExprPtr convert() const {
         if (lexem.GetType() == Lex::kId) {
           return std::make_unique<VariableUse>(lexem.GetData(), getType(VarToLex(type.type)));
         }
@@ -156,11 +160,6 @@ export class ArifmTree {
             output.push_back(std::move(operators.back()));
             operators.pop_back();
         }
-
-        for (auto& u : output) {
-            std::cout << u->lexem.GetData() << " ";
-        }
-        std::cout << '\n';
         return output;
     }
 
@@ -207,14 +206,23 @@ export class ArifmTree {
         }
         return f_type;
     }
-    // const ExprPtr& BuildAstTree(Node* root) {
-    //   if (GetPriority(root->lexem) == 0) {
-    //     return root->convert();
-    //   }
-    //   //auto left = BuildAstTree(root->left.get());
-    //   //auto right = BuildAstTree(root->right.get());
-    //   if (root->lexem.GetData() == "+") {
-    //     //return std::make_unique<Add>(left, right);
-    //   }
-    // }
+    ExprPtr BuildAstTree(Node* root) {
+      if (GetPriority(root->lexem) == 0) {
+        return root->convert();
+      }
+      auto left = BuildAstTree(root->left.get());
+      auto right = BuildAstTree(root->right.get());
+      if (root->lexem.GetData() == "+") {
+        return std::make_unique<Add>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == "-") {
+        return std::make_unique<Subtract>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == "*") {
+        return std::make_unique<Multiply>(move(left), move(right));
+      }
+      if (root->lexem.GetData() == "/") {
+        return std::make_unique<Divide>(move(left), move(right));
+      }
+    }
 };
