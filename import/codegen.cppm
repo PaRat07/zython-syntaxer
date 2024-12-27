@@ -340,17 +340,17 @@ export struct IfElse : ContainsTheProgram {
 
     auto cond_name = GetUniqueRegister();
     std::println(out, "{} = icmp ne i32 0, {}", cond_name, cond_reg);
-    std::println(out, "br i1 {}, label {}, label {}", cond_name, true_label, false_label);
+    std::println(out, "br i1 {}, label %{}, label %{}", cond_name, true_label, false_label);
     std::println(out, "{}:", true_label);
     for (auto &&i : exprs) {
       i->Evaluate(out, GetUniqueRegister());
     }
-    std::println(out, "br label {}", after_label);
+    std::println(out, "br label %{}", after_label);
     std::println(out, "{}:", false_label);
     for (auto &&i : if_false) {
       i->Evaluate(out, GetUniqueRegister());
     }
-    std::println(out, "br label {}", after_label);
+    std::println(out, "br label %{}", after_label);
     std::println(out, "{}:", after_label);
   }
 };
