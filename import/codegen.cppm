@@ -143,7 +143,7 @@ export struct Subtract final : BinaryOp {
     auto rbuf_name = GetUniqueRegister();
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
-    std::println(out, "{} = {} {} {} {}", to_reg,
+    std::println(out, "{} = {} {} {}, {}", to_reg,
         (left->GetResultType()->Typename() == "i32" ? "sub" : "fsub"),
         left->GetResultType()->Typename(), lbuf_name, rbuf_name);
   }
