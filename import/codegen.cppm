@@ -161,7 +161,7 @@ export struct Add final : BinaryOp {
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     out << std::format(
-        "{} = {} {} {} {}\n", to_reg,
+        "{} = {} {} {}, {}\n", to_reg,
         (left->GetResultType()->Typename() == "i32" ? "add" : "fadd"),
         left->GetResultType()->Typename(), lbuf_name, rbuf_name);
   }
@@ -455,6 +455,9 @@ export struct FunctionDecl final : ExpressionI {
                  }));
     for (auto&& i : exprs) {
       i->Evaluate(out, GetUniqueRegister());
+    }
+    if (return_type->TypeId() == Void::id) {
+      std::println(out, "ret void");
     }
     out << "}\n";
   }
