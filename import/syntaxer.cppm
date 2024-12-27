@@ -219,6 +219,12 @@ export class SyntaxValidator {
             }
             is_func = true;
             ArifmTree tree;
+            for (auto& u : funcs_) {
+              if (dynamic_cast<FunctionDecl*>(u.get())->name == lexes_.at(0).GetData()) {
+                st.push(dynamic_cast<ContainsTheProgram*>(u.get()));
+                break;
+              }
+            }
             SkipParams(tree);
             SkipLexem(lexes_.at(0).GetType(), ")");
           }
@@ -499,6 +505,9 @@ export class SyntaxValidator {
 
   void SkipParams(ArifmTree& tree) {
     auto func = tid.FindFunction(lexes_.at(0).GetData());
+    auto u = std::unique_ptr<FunctionInv>();
+    u->func_name = lexes_.at(0).GetData();
+    u->decl_ptr = dynamic_cast<FunctionDecl*>(st.top());
     SkipLexem(lexes_.at(0).GetType());
     SkipLexem(lexes_.at(0).GetType(), "(");
     int ind = 0;
@@ -507,7 +516,7 @@ export class SyntaxValidator {
       if (lexes_.at(0).GetType() == Lex::kOperator && lexes_.at(0).GetData() != "[") {
         break;
       }
-      auto type = Expression(true).first;
+      auto [type, expr] = Expression(true);
       if (ind >= func->parameters.size()) {
         throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
           std::to_string(func->parameters.size()), ind + 1, lexes_.at(0).GetPosition()));
@@ -516,15 +525,18 @@ export class SyntaxValidator {
         throw std::invalid_argument(std::format("type mismatch: cannot be combined {} and {}, at {}",
           Tid::ToValueString(type.type), Tid::ToValueString(func->parameters[ind].type), lexes_.at(0).GetPosition()));
       }
+      u->args.emplace_back(std::move(expr));
       if (lexes_.at(0).GetData() == ",") {
         SkipLexem(lexes_.at(0).GetType());
       }
       ++ind;
     }
+    codegen_res_.emplace_back(std::move(u));
     if (ind != func->parameters.size()) {
       throw std::invalid_argument(std::format("expected {} parameters, received {}, at {}",
           std::to_string(func->parameters.size()), ind, lexes_.at(0).GetPosition()));
     }
+    st.pop();
     tree.Insert(lexes_.at(0), func->return_value);
   }
 
@@ -581,7 +593,7 @@ export class SyntaxValidator {
           name, lexes_.at(0).GetPosition()));
       }
 
-      dynamic_cast<FunctionDecl*>(funcs_.back().get())->args.emplace_back(std::pair(name,
+      dynamic_cast<FunctionDecl*>(funcs_.back().get())->args.emplace_back(std::pair("%"+name,
         (type == variable_type::Integer ? TypePtr(std::make_unique<Integer>())
         : TypePtr(std::make_unique<Number>()))));
 

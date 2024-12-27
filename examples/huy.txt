@@ -3,6 +3,7 @@ b = 52
 def f():
     return 1
 
+f()
 a = 1
 a = a + 1
 while a < 1:
