@@ -121,7 +121,7 @@ export struct VariableUse final : ExpressionI {
   TypePtr type;
   virtual auto GetResultType() const -> const TypePtr& override { return type; }
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    std::println(out, "{} = load {}* {}", to_reg, type->Typename(), name);
+    std::println(out, "{} = load {}, {}* {}", to_reg, type->Typename(), type->Typename(), name);
   }
 };
 
