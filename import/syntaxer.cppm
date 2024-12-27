@@ -139,11 +139,11 @@ export class SyntaxValidator {
     Tid::Variable_Node* prev_id = nullptr;
     while (!lexes_.empty()) {
       bool is_new_id = false;
-      while (lexes_.at(0).GetType() == Lex::kEndLine) {
-        SkipLexem(Lex::kEndLine);
-      }
       if (SpacesAmount() != cur_indent_) {
         return;
+      }
+      while (lexes_.at(0).GetType() == Lex::kEndLine) {
+        SkipLexem(Lex::kEndLine);
       }
       if (lexes_.at(0).GetType() == Lex::kSeparator) {
         SkipLexem(Lex::kSeparator);
@@ -548,7 +548,7 @@ export class SyntaxValidator {
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
     }
     st.top()->exprs.emplace_back(std::make_unique<::IfElse>(std::move(expr), std::vector<ExprPtr>()));
-    st.push(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get()));
+    st.push(dynamic_cast<ContainsTheProgram*>(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get())->exprs.back().get()));
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();
@@ -561,6 +561,7 @@ export class SyntaxValidator {
       Program();
       CloseScope();
     }
+    st.pop();
   }
 
   void DeclFunc() {
