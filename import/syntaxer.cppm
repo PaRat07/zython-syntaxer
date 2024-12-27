@@ -157,6 +157,7 @@ export class SyntaxValidator {
             throw std::runtime_error(std::format("SyntaxError: break out of cycle at {}", lexes_.at(0).GetData()));
           }
           st.top()->exprs.emplace_back(std::make_unique<Break>());
+
           SkipLexem(Lex::kKeyworkd, "break");
           SkipLexem(Lex::kEndLine);
         } else if (lexes_.at(0).GetData() == "pass") {
@@ -166,6 +167,7 @@ export class SyntaxValidator {
           if (in_cycle_ == 0) {
             throw std::runtime_error(std::format("SyntaxError: break out of cycle at {}", lexes_[0].GetPosition()));
           }
+          st.top()->exprs.emplace_back(std::make_unique<Continue>());
           SkipLexem(Lex::kKeyworkd, "continue");
           SkipLexem(Lex::kEndLine);
         } else if (lexes_.at(0).GetData() == "return") {
@@ -595,7 +597,7 @@ export class SyntaxValidator {
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
     }
     st.top()->exprs.emplace_back(std::make_unique<Cycle>(std::move(expr), std::vector<ExprPtr>()));
-    st.push(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get()));
+    st.push(dynamic_cast<ContainsTheProgram*>(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get())->exprs.back().get()));
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();
