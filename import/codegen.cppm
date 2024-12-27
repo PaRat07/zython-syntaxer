@@ -143,7 +143,7 @@ export struct Subtract final : BinaryOp {
     auto rbuf_name = GetUniqueRegister();
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
-    std::println(out, "{} = {} {} {} {}", to_reg,
+    std::println(out, "{} = {} {} {}, {}", to_reg,
         (left->GetResultType()->Typename() == "i32" ? "sub" : "fsub"),
         left->GetResultType()->Typename(), lbuf_name, rbuf_name);
   }
@@ -161,7 +161,7 @@ export struct Add final : BinaryOp {
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     out << std::format(
-        "{} = {} {} {} {}\n", to_reg,
+        "{} = {} {} {}, {}\n", to_reg,
         (left->GetResultType()->Typename() == "i32" ? "add" : "fadd"),
         left->GetResultType()->Typename(), lbuf_name, rbuf_name);
   }
@@ -211,7 +211,7 @@ export struct DividAndRound final : BinaryOp {
       std::println(out, "{} = sdiv i32 {}, {}", to_reg, lbuf_name, rbuf_name);
     } else {
       auto ansbuf_name = GetUniqueRegister();
-      std::println(out, "{} = {} {} {} {}", to_reg, "fdiv",
+      std::println(out, "{} = {} {} {}, {}", to_reg, "fdiv",
                    left->GetResultType()->Typename(), lbuf_name, rbuf_name);
       std::print(out, "{} = fptosi float {} to i32", to_reg, ansbuf_name);
     }
@@ -230,7 +230,7 @@ export struct Multiply final : BinaryOp {
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     out << std::format(
-        "{} = {} {} {} {}\n", to_reg,
+        "{} = {} {} {}, {}\n", to_reg,
         (left->GetResultType()->Typename() == "i32" ? "mul" : "fmul"),
         left->GetResultType()->Typename(), lbuf_name, rbuf_name);
   }
@@ -457,6 +457,9 @@ export struct FunctionDecl final : ExpressionI {
                  }));
     for (auto&& i : exprs) {
       i->Evaluate(out, GetUniqueRegister());
+    }
+    if (return_type->TypeId() == Void::id) {
+      std::println(out, "ret void");
     }
     out << "}\n";
   }
