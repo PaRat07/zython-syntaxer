@@ -397,6 +397,8 @@ export struct ReturnSttmnt : ExpressionI {
 };
 
 export struct FunctionDecl final : ExpressionI {
+  FunctionDecl() = default;
+
   FunctionDecl(std::string name, TypePtr return_type,
                std::vector<ExprPtr> exprs,
                std::vector<std::pair<std::string, TypePtr>> args)
