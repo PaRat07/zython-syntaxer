@@ -330,7 +330,6 @@ export struct ContainsTheProgram : ExpressionI {
   std::vector<ExprPtr> exprs;
 };
 
-// TODO
 export struct IfElse : ContainsTheProgram {
   IfElse(ExprPtr cond, std::vector<ExprPtr> exprs) : ContainsTheProgram(std::move(exprs)), cond(std::move(cond)) {}
   ExprPtr cond;
@@ -464,11 +463,13 @@ export struct FunctionDecl final : ContainsTheProgram {
   std::vector<std::pair<std::string, TypePtr>> args;
 
   void Evaluate(std::ostream& out, std::string_view) const override {
-    std::println(out, "define dso_local {} {}({:n}){{", return_type->Typename(),
-                 name,
-                 args | std::views::transform([](auto&& p) {
-                   return std::format("{} {}", p.second->Typename(), p.first);
-                 }));
+    std::print(out, "define dso_local {} {}(", return_type->Typename(), name);
+    for (bool first = true; auto &&[name, type] : args) {
+      std::print(out, "{}", first ? "" : ", ");
+      first = false;
+      std::print(out, "{} {}", type->Typename(), name);
+    }
+    std::println(out, "){{");
     for (auto&& i : exprs) {
       i->Evaluate(out, GetUniqueRegister());
     }
