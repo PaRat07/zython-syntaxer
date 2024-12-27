@@ -485,6 +485,7 @@ export struct FunctionDecl final : ContainsTheProgram {
 
 
 export struct FunctionInv final : ExpressionI {
+  FunctionInv() = default;
   FunctionInv(std::vector<ExprPtr> args, const FunctionDecl *decl, std::string func_name)
       : args(std::move(args)), decl_ptr(decl), func_name(std::move(func_name)) {}
   std::vector<ExprPtr> args;

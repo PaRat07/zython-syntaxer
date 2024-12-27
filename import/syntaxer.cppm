@@ -505,7 +505,7 @@ export class SyntaxValidator {
 
   void SkipParams(ArifmTree& tree) {
     auto func = tid.FindFunction(lexes_.at(0).GetData());
-    auto u = std::unique_ptr<FunctionInv>();
+    auto u = std::make_unique<FunctionInv>();
     u->func_name = lexes_.at(0).GetData();
     u->decl_ptr = dynamic_cast<FunctionDecl*>(st.top());
     SkipLexem(lexes_.at(0).GetType());
