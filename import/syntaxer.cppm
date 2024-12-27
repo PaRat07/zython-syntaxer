@@ -212,7 +212,7 @@ export class SyntaxValidator {
               throw std::invalid_argument(std::format("type mismatch, at {}", lexes_.at(0).GetPosition()));
             }
             if (is_new_id) {
-              res_.emplace_back(std::make_unique<VariableDecl>(prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
+              res_.emplace_back(std::make_unique<VariableDecl>("%" + prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
             }
             res_.emplace_back(std::make_unique<Assignment>("%" + prev_id->name, std::move(root)));
             prev_id->type = type.type;
