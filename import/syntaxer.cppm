@@ -95,11 +95,15 @@ export class SyntaxValidator {
     if (!lexes_.empty()) {
       throw std::invalid_argument(std::format("Unexpected tabulation at {}", lexes_[0].GetPosition()));
     }
+    for (auto &u : res_) {
+      u->Evaluate(std::cout, "");
+    }
   }
 
  private:
 
   Tid tid;
+  std::vector<ExprPtr> res_;
 
   std::span<Lexem> lexes_;
   int in_cycle_ = 0;
@@ -119,6 +123,7 @@ export class SyntaxValidator {
   void Program() {
     Tid::Variable_Node* prev_id = nullptr;
     while (!lexes_.empty()) {
+      bool is_new_id = false;
       while (lexes_.at(0).GetType() == Lex::kEndLine) {
         SkipLexem(Lex::kEndLine);
       }
@@ -178,6 +183,7 @@ export class SyntaxValidator {
           if (lexes_.at(1).GetData() != "(") {
             prev_id = tid.FindVariable(lexes_.at(0).GetData());
             if (prev_id == nullptr) {
+              is_new_id = true;
               if (lexes_.at(1).GetData() == "=") {
                 tid.InsertVariable(Tid::Variable_Node(lexes_.at(0).GetData()));
                 prev_id = tid.FindVariable(lexes_.at(0).GetData());
@@ -205,7 +211,10 @@ export class SyntaxValidator {
             if (type != *prev_id && prev_id->type != variable_type::Undefined) {
               throw std::invalid_argument(std::format("type mismatch, at {}", lexes_.at(0).GetPosition()));
             }
-            Assignment("%" + prev_id->name, std::move(root)).Evaluate(std::cout, "");
+            if (is_new_id) {
+              res_.emplace_back(std::make_unique<VariableDecl>(prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
+            }
+            res_.emplace_back(std::make_unique<Assignment>("%" + prev_id->name, std::move(root)));
             prev_id->type = type.type;
             prev_id->in_array_type = type.in_array_type;
             prev_id->array_dimensions = type.array_dimensions;
