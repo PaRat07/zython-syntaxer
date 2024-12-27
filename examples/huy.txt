@@ -1,6 +1,6 @@
 b = 52
 
-def f():
+def f(i : int):
     return 1
 
 f()
