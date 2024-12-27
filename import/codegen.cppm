@@ -20,9 +20,14 @@ export module codegen;
 
 import lexem;
 
-std::string GetUniqueId() {
+std::string GetUniqueRegister() {
   static size_t cur_ind = 0;
-  return std::format("{}uniq", cur_ind++);
+  return std::format("%{}reg", cur_ind++);
+}
+
+std::string GetUniqueLabel() {
+  static size_t cur_ind = 0;
+  return std::format("{}lbl", cur_ind++);
 }
 
 export struct TypeI {
@@ -134,8 +139,8 @@ export struct Subtract final : BinaryOp {
   }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto lbuf_name = GetUniqueId();
-    auto rbuf_name = GetUniqueId();
+    auto lbuf_name = GetUniqueRegister();
+    auto rbuf_name = GetUniqueRegister();
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     std::println(out, "{} = {} {} {} {}", to_reg,
@@ -151,8 +156,8 @@ export struct Add final : BinaryOp {
     return left->GetResultType();
   }
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto lbuf_name = GetUniqueId();
-    auto rbuf_name = GetUniqueId();
+    auto lbuf_name = GetUniqueRegister();
+    auto rbuf_name = GetUniqueRegister();
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     out << std::format(
@@ -170,14 +175,14 @@ export struct Divide final : BinaryOp {
   }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto lbuf_name = GetUniqueId();
-    auto rbuf_name = GetUniqueId();
+    auto lbuf_name = GetUniqueRegister();
+    auto rbuf_name = GetUniqueRegister();
     if (left->GetResultType()->TypeId() == Number::id) {
       left->Evaluate(out, lbuf_name);
       right->Evaluate(out, rbuf_name);
     } else {
-      auto intlbuf_name = GetUniqueId();
-      auto intrbuf_name = GetUniqueId();
+      auto intlbuf_name = GetUniqueRegister();
+      auto intrbuf_name = GetUniqueRegister();
 
       left->Evaluate(out, intlbuf_name);
       right->Evaluate(out, intrbuf_name);
@@ -198,14 +203,14 @@ export struct DividAndRound final : BinaryOp {
   }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto lbuf_name = GetUniqueId();
-    auto rbuf_name = GetUniqueId();
+    auto lbuf_name = GetUniqueRegister();
+    auto rbuf_name = GetUniqueRegister();
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     if (left->GetResultType()->TypeId() == Integer::id) {
       std::println(out, "{} = sdiv i32 {}, {}", to_reg, lbuf_name, rbuf_name);
     } else {
-      auto ansbuf_name = GetUniqueId();
+      auto ansbuf_name = GetUniqueRegister();
       std::println(out, "{} = {} {} {} {}", to_reg, "fdiv",
                    left->GetResultType()->Typename(), lbuf_name, rbuf_name);
       std::print(out, "{} = fptosi float {} to i32", to_reg, ansbuf_name);
@@ -220,8 +225,8 @@ export struct Multiply final : BinaryOp {
     return left->GetResultType();
   }
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto lbuf_name = GetUniqueId();
-    auto rbuf_name = GetUniqueId();
+    auto lbuf_name = GetUniqueRegister();
+    auto rbuf_name = GetUniqueRegister();
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     out << std::format(
@@ -247,11 +252,11 @@ export struct Equal final : BinaryOp {
   }
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    auto left_buf_name = GetUniqueId();
-    auto right_buf_name = GetUniqueId();
+    auto left_buf_name = GetUniqueRegister();
+    auto right_buf_name = GetUniqueRegister();
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
-    auto res_buf_name = GetUniqueId();
+    auto res_buf_name = GetUniqueRegister();
     std::println(out, "{} = {} {} {} {}, {}",
                  res_buf_name,
                  (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
@@ -271,11 +276,11 @@ export struct NotEqual final : BinaryOp {
   }
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    auto left_buf_name = GetUniqueId();
-    auto right_buf_name = GetUniqueId();
+    auto left_buf_name = GetUniqueRegister();
+    auto right_buf_name = GetUniqueRegister();
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
-    auto res_buf_name = GetUniqueId();
+    auto res_buf_name = GetUniqueRegister();
     std::println(out, "{} = {} {} {} {}, {}",
                  res_buf_name,
                  (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
@@ -294,11 +299,11 @@ export struct Greater final : BinaryOp {
   }
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    auto left_buf_name = GetUniqueId();
-    auto right_buf_name = GetUniqueId();
+    auto left_buf_name = GetUniqueRegister();
+    auto right_buf_name = GetUniqueRegister();
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
-    auto res_buf_name = GetUniqueId();
+    auto res_buf_name = GetUniqueRegister();
     std::println(out, "{} = {} {} {} {}, {}",
                  res_buf_name,
                  (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
@@ -318,11 +323,11 @@ export struct GreaterOrEqual final : BinaryOp {
   }
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    auto left_buf_name = GetUniqueId();
-    auto right_buf_name = GetUniqueId();
+    auto left_buf_name = GetUniqueRegister();
+    auto right_buf_name = GetUniqueRegister();
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
-    auto res_buf_name = GetUniqueId();
+    auto res_buf_name = GetUniqueRegister();
     std::println(out, "{} = {} {} {} {}, {}",
                  res_buf_name,
                  (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
@@ -342,11 +347,11 @@ export struct Less final : BinaryOp {
   }
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    auto left_buf_name = GetUniqueId();
-    auto right_buf_name = GetUniqueId();
+    auto left_buf_name = GetUniqueRegister();
+    auto right_buf_name = GetUniqueRegister();
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
-    auto res_buf_name = GetUniqueId();
+    auto res_buf_name = GetUniqueRegister();
     std::println(out, "{} = {} {} {} {}, {}",
                  res_buf_name,
                  (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
@@ -366,11 +371,11 @@ export struct LessOrEqual final : BinaryOp {
   }
 
   void Evaluate(std::ostream &out, std::string_view to_reg) const override {
-    auto left_buf_name = GetUniqueId();
-    auto right_buf_name = GetUniqueId();
+    auto left_buf_name = GetUniqueRegister();
+    auto right_buf_name = GetUniqueRegister();
     left->Evaluate(out, left_buf_name);
     right->Evaluate(out, right_buf_name);
-    auto res_buf_name = GetUniqueId();
+    auto res_buf_name = GetUniqueRegister();
     std::println(out, "{} = {} {} {} {}, {}",
                  res_buf_name,
                  (left->GetResultType()->TypeId() == Integer::id ? "icmp" : "fcmp"),
@@ -390,7 +395,7 @@ export struct ReturnSttmnt : ExpressionI {
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto ret_buf = GetUniqueId();
+    auto ret_buf = GetUniqueRegister();
     value->Evaluate(out, ret_buf);
     std::println(out, "ret {} {}", value->GetResultType()->Typename(), ret_buf);
   }
@@ -418,7 +423,7 @@ export struct FunctionDecl final : ExpressionI {
                    return std::format("{} {}", p.second->Typename(), p.first);
                  }));
     for (auto&& i : exprs) {
-      i->Evaluate(out, GetUniqueId());
+      i->Evaluate(out, GetUniqueRegister());
     }
     out << "}\n";
   }
@@ -438,7 +443,7 @@ export struct FunctionInv final : ExpressionI {
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
     std::vector<std::string> reg_names(args.size());
     for (auto &i : reg_names) {
-      i = GetUniqueId();
+      i = GetUniqueRegister();
     }
     for (const auto &[reg, expr] : std::views::zip(reg_names, args)) {
       expr->Evaluate(out, reg);
@@ -467,7 +472,7 @@ export struct Assignment : ExpressionI {
   }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    auto buf_name = GetUniqueId();
+    auto buf_name = GetUniqueRegister();
     value->Evaluate(out, buf_name);
     std::println(out, "store {} {}, {}* {}", value->GetResultType()->Typename(),
                  buf_name, value->GetResultType()->Typename(), var_name);
@@ -485,21 +490,21 @@ export struct Cycle : ExpressionI {
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
   void Evaluate(std::ostream& out, std::string_view) const override {
-    auto again_name = GetUniqueId();
+    auto again_name = GetUniqueLabel();
     std::println(out, "{}:", again_name);
-    auto res_name = GetUniqueId();
+    auto res_name = GetUniqueRegister();
     cond->Evaluate(out, res_name);
-    auto cond_name = GetUniqueId();
+    auto cond_name = GetUniqueRegister();
     std::println(out, "{} = icmp ne i32 0, {}", cond_name, res_name);
-    auto body_label_name = GetUniqueId();
-    auto break_label_name = GetUniqueId();
+    auto body_label_name = GetUniqueLabel();
+    auto break_label_name = GetUniqueLabel();
     std::println(out, "br i1 {}, label {}, label {}", cond_name, body_label_name, break_label_name);
     std::println(out, "{}:", body_label_name);
-    auto continue_label_name = GetUniqueId();
+    auto continue_label_name = GetUniqueLabel();
     for (auto &&i : body) {
       i->break_label = break_label_name;
       i->continue_label = continue_label_name;
-      i->Evaluate(out, GetUniqueId());
+      i->Evaluate(out, GetUniqueRegister());
     }
     std::println(out, "{}:", continue_label_name);
     std::println(out, "br label {}", again_name);
