@@ -211,7 +211,7 @@ export struct DividAndRound final : BinaryOp {
       std::println(out, "{} = sdiv i32 {}, {}", to_reg, lbuf_name, rbuf_name);
     } else {
       auto ansbuf_name = GetUniqueRegister();
-      std::println(out, "{} = {} {} {} {}", to_reg, "fdiv",
+      std::println(out, "{} = {} {} {}, {}", to_reg, "fdiv",
                    left->GetResultType()->Typename(), lbuf_name, rbuf_name);
       std::print(out, "{} = fptosi float {} to i32", to_reg, ansbuf_name);
     }
