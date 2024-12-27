@@ -189,7 +189,6 @@ export struct Divide final : BinaryOp {
       right->Evaluate(out, intrbuf_name);
 
       std::println(out, "{} = sitofp i32 {} to float", lbuf_name, intlbuf_name);
-      std::println(out, "{} = sitofp i32 {} to float", lbuf_name, intlbuf_name);
     }
     std::print(out, "{} = {} {} {} {}\n", to_reg, "fsub",
                left->GetResultType()->Typename(), lbuf_name, rbuf_name);
