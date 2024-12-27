@@ -72,6 +72,9 @@ std::string_view ToString(Lex lex) {
 export class SyntaxValidator {
  public:
   SyntaxValidator(const std::string& filename) {
+    std::string main_name = "@main";
+    res_ = std::make_unique<FunctionDecl>(main_name, std::make_unique<Integer>(),
+      std::vector<ExprPtr>(), std::vector<std::pair<std::string, TypePtr>>());
     auto lexes_own = Lexer(filename, "token.txt").Scan();
     bool prev_endline = false;
     std::vector<Lexem> lexes_filtered;
@@ -95,15 +98,13 @@ export class SyntaxValidator {
     if (!lexes_.empty()) {
       throw std::invalid_argument(std::format("Unexpected tabulation at {}", lexes_[0].GetPosition()));
     }
-    for (auto &u : res_) {
-      u->Evaluate(std::cout, "");
-    }
+    res_->Evaluate(std::cout, "");
   }
 
  private:
 
   Tid tid;
-  std::vector<ExprPtr> res_;
+  ExprPtr res_;
 
   std::span<Lexem> lexes_;
   int in_cycle_ = 0;
@@ -212,9 +213,9 @@ export class SyntaxValidator {
               throw std::invalid_argument(std::format("type mismatch, at {}", lexes_.at(0).GetPosition()));
             }
             if (is_new_id) {
-              res_.emplace_back(std::make_unique<VariableDecl>("%" + prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
+              dynamic_cast<FunctionDecl*>(res_.get())->exprs.emplace_back(std::make_unique<VariableDecl>("%" + prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
             }
-            res_.emplace_back(std::make_unique<Assignment>("%" + prev_id->name, std::move(root)));
+            dynamic_cast<FunctionDecl*>(res_.get())->exprs.emplace_back(std::make_unique<Assignment>("%" + prev_id->name, std::move(root)));
             prev_id->type = type.type;
             prev_id->in_array_type = type.in_array_type;
             prev_id->array_dimensions = type.array_dimensions;
