@@ -241,7 +241,15 @@ export struct Break : ExpressionI {
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
   void Evaluate(std::ostream& out, std::string_view to_reg) const override {
-    std::println(out, "br label {}", break_label);
+    std::println(out, "br label %{}", break_label);
+  }
+};
+
+export struct Continue : ExpressionI {
+  auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
+
+  void Evaluate(std::ostream& out, std::string_view to_reg) const override {
+    std::println(out, "br label %{}", continue_label);
   }
 };
 
