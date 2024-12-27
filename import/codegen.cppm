@@ -532,6 +532,7 @@ export struct Cycle : ContainsTheProgram {
 
   void Evaluate(std::ostream& out, std::string_view) const override {
     auto again_name = GetUniqueLabel();
+    std::println(out, "br label %{}", again_name);
     std::println(out, "{}:", again_name);
     auto res_name = GetUniqueRegister();
     cond->Evaluate(out, res_name);
@@ -539,7 +540,7 @@ export struct Cycle : ContainsTheProgram {
     std::println(out, "{} = icmp ne i32 0, {}", cond_name, res_name);
     auto body_label_name = GetUniqueLabel();
     auto break_label_name = GetUniqueLabel();
-    std::println(out, "br i1 {}, label {}, label {}", cond_name, body_label_name, break_label_name);
+    std::println(out, "br i1 {}, label %{}, label %{}", cond_name, body_label_name, break_label_name);
     std::println(out, "{}:", body_label_name);
     auto continue_label_name = GetUniqueLabel();
     for (auto &&i : exprs) {
@@ -547,8 +548,9 @@ export struct Cycle : ContainsTheProgram {
       i->continue_label = continue_label_name;
       i->Evaluate(out, GetUniqueRegister());
     }
+    std::println(out, "br label %{}", continue_label_name);
     std::println(out, "{}:", continue_label_name);
-    std::println(out, "br label {}", again_name);
+    std::println(out, "br label %{}", again_name);
     std::println(out, "{}:", break_label_name);
   }
 };
