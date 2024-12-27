@@ -156,6 +156,7 @@ export class SyntaxValidator {
           if (in_cycle_ == 0) {
             throw std::runtime_error(std::format("SyntaxError: break out of cycle at {}", lexes_.at(0).GetData()));
           }
+          st.top()->exprs.emplace_back(std::make_unique<Break>());
           SkipLexem(Lex::kKeyworkd, "break");
           SkipLexem(Lex::kEndLine);
         } else if (lexes_.at(0).GetData() == "pass") {
