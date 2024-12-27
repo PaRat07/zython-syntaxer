@@ -3,10 +3,12 @@ module;
 #include <cassert>
 #include <fstream>
 #include <stack>
+#include <algorithm>
 #include <iostream>
 #include <unordered_map>
 #include <ranges>
 #include <vector>
+#include <deque>
 #include <span>
 #include <set>
 
@@ -102,6 +104,9 @@ export class SyntaxValidator {
     if (!lexes_.empty()) {
       throw std::invalid_argument(std::format("Unexpected tabulation at {}", lexes_[0].GetPosition()));
     }
+    for (auto &u : funcs_ | std::views::reverse) {
+      codegen_res_.insert(codegen_res_.begin(), std::move(u));
+    }
     for (const auto &u : codegen_res_) {
       u->Evaluate(std::cout, "");
     }
@@ -112,6 +117,8 @@ export class SyntaxValidator {
   Tid tid;
   std::vector<ExprPtr> codegen_res_;
   std::stack<ContainsTheProgram*> st;
+
+  std::vector<ExprPtr> funcs_;
 
   std::span<Lexem> lexes_;
   int in_cycle_ = 0;
@@ -175,7 +182,7 @@ export class SyntaxValidator {
             throw std::invalid_argument(std::format("SyntaxError: return out of func at {}", lexes_.at(0).GetPosition()));
           }
           SkipLexem(Lex::kKeyworkd, "return");
-          auto func_type = Expression().first;
+          auto [func_type, expr] = Expression();
           if (func_type.type != tec_func.back()->return_value.type && tec_func.back()->return_value.type != variable_type::Undefined) {
             throw std::invalid_argument(std::format("type mismatch: cannot be combined return values {} and {}, at {}",
               Tid::ToValueString(func_type.type), Tid::ToValueString(tec_func.back()->return_value.type), lexes_.at(0).GetPosition()));
@@ -185,6 +192,9 @@ export class SyntaxValidator {
               lexes_.at(0).GetPosition()));
           }
           tec_func.back()->return_value = func_type;
+          dynamic_cast<FunctionDecl*>(st.top())->return_type = ArifmTree::getType(ArifmTree::VarToLex(func_type.type));
+          dynamic_cast<FunctionDecl*>(st.top())->exprs.emplace_back
+          (std::make_unique<ReturnSttmnt>(std::move(expr)));
         } else {
           throw std::invalid_argument(std::format("SyntaxError: expected code, got {}", lexes_.at(0).GetData()));
         }
@@ -554,6 +564,10 @@ export class SyntaxValidator {
 
     NewScope();
 
+    funcs_.emplace_back(std::make_unique<FunctionDecl>());
+    dynamic_cast<FunctionDecl*>(funcs_.back().get())->name = "@"+lexes_.at(0).GetData();
+    st.push(dynamic_cast<ContainsTheProgram*>(funcs_.back().get()));
+
     SkipLexem(Lex::kId);
     SkipLexem(Lex::kOperator, "(");
     while (lexes_.at(0).GetType() != Lex::kOperator ||
@@ -566,6 +580,11 @@ export class SyntaxValidator {
         throw std::invalid_argument(std::format("variable redefinition {}, at {}",
           name, lexes_.at(0).GetPosition()));
       }
+
+      dynamic_cast<FunctionDecl*>(funcs_.back().get())->args.emplace_back(std::pair(name,
+        (type == variable_type::Integer ? TypePtr(std::make_unique<Integer>())
+        : TypePtr(std::make_unique<Number>()))));
+
       SkipLexem(Lex::kId, lexes_.at(0).GetData());
       if (lexes_.at(0).GetData() != "[") {
         tid.InsertVariable(Tid::Variable_Node(name, type));
@@ -586,6 +605,7 @@ export class SyntaxValidator {
     SkipLexem(Lex::kEndLine);
     Program();
     CloseScope();
+    st.pop();
     tec_func.pop_back();
   }
 
