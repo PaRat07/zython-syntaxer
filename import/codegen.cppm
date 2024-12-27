@@ -230,7 +230,7 @@ export struct Multiply final : BinaryOp {
     left->Evaluate(out, lbuf_name);
     right->Evaluate(out, rbuf_name);
     out << std::format(
-        "{} = {} {} {} {}\n", to_reg,
+        "{} = {} {} {}, {}\n", to_reg,
         (left->GetResultType()->Typename() == "i32" ? "mul" : "fmul"),
         left->GetResultType()->Typename(), lbuf_name, rbuf_name);
   }
