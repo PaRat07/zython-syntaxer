@@ -316,10 +316,16 @@ export struct Greater final : BinaryOp {
   }
 };
 
+export struct ContainsTheProgram : ExpressionI {
+  ContainsTheProgram() = default;
+  ContainsTheProgram(std::vector<ExprPtr> exprs) : exprs(std::move(exprs)) {}
+  std::vector<ExprPtr> exprs;
+};
+
 // TODO
-export struct IfElse : ExpressionI {
+export struct IfElse : ContainsTheProgram {
+  IfElse(ExprPtr cond, std::vector<ExprPtr> exprs) : ContainsTheProgram(std::move(exprs)), cond(std::move(cond)) {}
   ExprPtr cond;
-  std::vector<ExprPtr> if_true;
   std::vector<ExprPtr> if_false;
 
   auto GetResultType() const -> const TypePtr& override {
@@ -336,7 +342,7 @@ export struct IfElse : ExpressionI {
     std::println(out, "{} = icmp ne i32 0, {}", cond_name, cond_reg);
     std::println(out, "br i1 {}, label {}, label {}", cond_name, true_label, false_label);
     std::println(out, "{}:", true_label);
-    for (auto &&i : if_true) {
+    for (auto &&i : exprs) {
       i->Evaluate(out, GetUniqueRegister());
     }
     std::println(out, "br label {}", after_label);
@@ -433,12 +439,6 @@ export struct ReturnSttmnt : ExpressionI {
     value->Evaluate(out, ret_buf);
     std::println(out, "ret {} {}", value->GetResultType()->Typename(), ret_buf);
   }
-};
-
-export struct ContainsTheProgram : ExpressionI {
-  ContainsTheProgram() = default;
-  ContainsTheProgram(std::vector<ExprPtr> exprs) : exprs(std::move(exprs)) {}
-  std::vector<ExprPtr> exprs;
 };
 
 export struct FunctionDecl final : ContainsTheProgram {

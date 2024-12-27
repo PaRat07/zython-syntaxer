@@ -517,11 +517,13 @@ export class SyntaxValidator {
 
   void IfElse() {
     SkipLexem(Lex::kKeyworkd, "if");
-    auto type = Expression().first;
+    auto [type, expr] = Expression();
     if (type.type != variable_type::Integer) {
       throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
     }
+    st.top()->exprs.emplace_back(std::make_unique<::IfElse>(std::move(expr), std::vector<ExprPtr>()));
+    st.push(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get()));
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();
