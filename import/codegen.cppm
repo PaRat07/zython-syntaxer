@@ -434,19 +434,24 @@ export struct ReturnSttmnt : ExpressionI {
   }
 };
 
-export struct FunctionDecl final : ExpressionI {
+export struct ContainsTheProgram : ExpressionI {
+  ContainsTheProgram() = default;
+  ContainsTheProgram(std::vector<ExprPtr> exprs) : exprs(std::move(exprs)) {}
+  std::vector<ExprPtr> exprs;
+};
+
+export struct FunctionDecl final : ContainsTheProgram {
   FunctionDecl() = default;
 
   FunctionDecl(std::string name, TypePtr return_type,
                std::vector<ExprPtr> exprs,
                std::vector<std::pair<std::string, TypePtr>> args)
-      : name(std::move(name)),
+      : ContainsTheProgram(std::move(exprs)),
+        name(std::move(name)),
         return_type(std::move(return_type)),
-        exprs(std::move(exprs)),
         args(std::move(args)) {}
   std::string name;
   TypePtr return_type;
-  std::vector<ExprPtr> exprs;
   std::vector<std::pair<std::string, TypePtr>> args;
 
   void Evaluate(std::ostream& out, std::string_view) const override {
@@ -515,13 +520,12 @@ export struct Assignment : ExpressionI {
   }
 };
 
-export struct Cycle : ExpressionI {
+export struct Cycle : ContainsTheProgram {
   Cycle(ExprPtr cond_val, std::vector<ExprPtr> body_val)
-    : cond(std::move(cond_val)),
-      body(std::move(body_val)) {}
+    : ContainsTheProgram(std::move(body_val)),
+  cond(std::move(cond_val)) {}
 
   ExprPtr cond;
-  std::vector<ExprPtr> body;
 
   auto GetResultType() const -> const TypePtr& override { return Void::kPtr; }
 
@@ -537,7 +541,7 @@ export struct Cycle : ExpressionI {
     std::println(out, "br i1 {}, label {}, label {}", cond_name, body_label_name, break_label_name);
     std::println(out, "{}:", body_label_name);
     auto continue_label_name = GetUniqueLabel();
-    for (auto &&i : body) {
+    for (auto &&i : exprs) {
       i->break_label = break_label_name;
       i->continue_label = continue_label_name;
       i->Evaluate(out, GetUniqueRegister());

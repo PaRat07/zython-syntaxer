@@ -2,6 +2,7 @@ module;
 
 #include <cassert>
 #include <fstream>
+#include <stack>
 #include <iostream>
 #include <unordered_map>
 #include <ranges>
@@ -73,8 +74,9 @@ export class SyntaxValidator {
  public:
   SyntaxValidator(const std::string& filename) {
     std::string main_name = "@main";
-    res_ = std::make_unique<FunctionDecl>(main_name, std::make_unique<Integer>(),
-      std::vector<ExprPtr>(), std::vector<std::pair<std::string, TypePtr>>());
+    codegen_res_.emplace_back(std::make_unique<FunctionDecl>(main_name, std::make_unique<Integer>(),
+      std::vector<ExprPtr>(), std::vector<std::pair<std::string, TypePtr>>()));
+    st.push(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get()));
     auto lexes_own = Lexer(filename, "token.txt").Scan();
     bool prev_endline = false;
     std::vector<Lexem> lexes_filtered;
@@ -95,18 +97,21 @@ export class SyntaxValidator {
     }
     lexes_ = lexes_filtered;
     Program();
-    dynamic_cast<FunctionDecl*>(res_.get())->exprs.emplace_back
+    dynamic_cast<FunctionDecl*>(st.top())->exprs.emplace_back
     (std::make_unique<ReturnSttmnt>(std::make_unique<IntegerLiteral>(0)));
     if (!lexes_.empty()) {
       throw std::invalid_argument(std::format("Unexpected tabulation at {}", lexes_[0].GetPosition()));
     }
-    res_->Evaluate(std::cout, "");
+    for (const auto &u : codegen_res_) {
+      u->Evaluate(std::cout, "");
+    }
   }
 
  private:
 
   Tid tid;
-  ExprPtr res_;
+  std::vector<ExprPtr> codegen_res_;
+  std::stack<ContainsTheProgram*> st;
 
   std::span<Lexem> lexes_;
   int in_cycle_ = 0;
@@ -215,9 +220,9 @@ export class SyntaxValidator {
               throw std::invalid_argument(std::format("type mismatch, at {}", lexes_.at(0).GetPosition()));
             }
             if (is_new_id) {
-              dynamic_cast<FunctionDecl*>(res_.get())->exprs.emplace_back(std::make_unique<VariableDecl>("%" + prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
+              st.top()->exprs.emplace_back(std::make_unique<VariableDecl>("%" + prev_id->name, ArifmTree::getType(ArifmTree::VarToLex(type.type))));
             }
-            dynamic_cast<FunctionDecl*>(res_.get())->exprs.emplace_back(std::make_unique<Assignment>("%" + prev_id->name, std::move(root)));
+            st.top()->exprs.emplace_back(std::make_unique<Assignment>("%" + prev_id->name, std::move(root)));
             prev_id->type = type.type;
             prev_id->in_array_type = type.in_array_type;
             prev_id->array_dimensions = type.array_dimensions;
@@ -581,16 +586,19 @@ export class SyntaxValidator {
 
   void While() {
     SkipLexem(Lex::kKeyworkd, "while");
-    auto type = Expression().first;
+    auto [type, expr] = Expression();
     if (type.type != variable_type::Integer) {
       throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
     }
+    codegen_res_.emplace_back(std::make_unique<Cycle>(std::move(expr), std::vector<ExprPtr>()));
+    st.push(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get()));
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
     NewScope();
     ++in_cycle_;
     Program();
+    st.pop();
     --in_cycle_;
     CloseScope();
   }
