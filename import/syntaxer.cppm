@@ -591,7 +591,7 @@ export class SyntaxValidator {
       throw std::invalid_argument(std::format("the type of expression in the condition is not equal Integer, {}, at {}",
         Tid::ToValueString(type.type), lexes_.at(0).GetPosition()));
     }
-    codegen_res_.emplace_back(std::make_unique<Cycle>(std::move(expr), std::vector<ExprPtr>()));
+    st.top()->exprs.emplace_back(std::make_unique<Cycle>(std::move(expr), std::vector<ExprPtr>()));
     st.push(dynamic_cast<ContainsTheProgram*>(codegen_res_.back().get()));
     SkipLexem(Lex::kKeyworkd, ":");
     SkipLexem(Lex::kEndLine);
