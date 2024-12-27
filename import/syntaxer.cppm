@@ -95,6 +95,8 @@ export class SyntaxValidator {
     }
     lexes_ = lexes_filtered;
     Program();
+    dynamic_cast<FunctionDecl*>(res_.get())->exprs.emplace_back
+    (std::make_unique<ReturnSttmnt>(std::make_unique<IntegerLiteral>(0)));
     if (!lexes_.empty()) {
       throw std::invalid_argument(std::format("Unexpected tabulation at {}", lexes_[0].GetPosition()));
     }
